@@ -7,6 +7,7 @@
 //
 
 #import <SpriteKit/SpriteKit.h>
+#import "Utility.h"
 
 @interface GamePiece : SKSpriteNode
 
@@ -15,7 +16,11 @@
 @property (nonatomic, assign) BOOL isPlayed;
 @property (nonatomic, assign) int player;
 @property (nonatomic, assign) CGPoint moveDestination;
+@property (nonatomic, strong) NSMutableArray *actions;
+@property (nonatomic, strong) NSMutableArray *moveDestinations;
 
 - (id)initWithImageNamed:(NSString*)name;
+- (void)generateActions;
+- (void)resetMovement;
 
 @end

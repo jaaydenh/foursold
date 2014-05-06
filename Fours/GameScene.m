@@ -10,47 +10,11 @@
 #import "GridPosition.h"
 #import "GameBoard.h"
 #import "Utility.h"
-#import "GameAction.h"
-
-#pragma mark - Custom Type Definitions
-
-typedef enum {
-    None,
-    Sticky,
-    UpArrow,
-    DownArrow,
-    LeftArrow,
-    RightArrow
-} TokenType;
-
-typedef enum {
-    Top,
-    Bottom,
-    LeftSide,
-    RightSide
-} TapArea;
-
-typedef enum {
-    Up,
-    Down,
-    Left,
-    Right
-} Direction;
-
-#define kColumnSize 30
-#define kRowSize    30
-#define kPieceSize  30
-#define kGridXOffset 40.0
-#define kGridYOffset 150.0
-#define kTapAreaWidth 40
-#define kBoardRows 8
-#define kBoardColumns 8
-#define kWinnerLabelName @"winnerLabel"
-
 
 #pragma mark - Private GameScene Properties
 
 @interface GameScene ()
+
 @property BOOL contentCreated;
 @property BOOL validMove;
 @property SKSpriteNode *tapAreaLeft;
@@ -64,13 +28,12 @@ typedef enum {
 @property (strong) NSMutableArray *winningPositions;
 @property GamePiece *lastPiece;
 @property GamePiece *currentPiece;
-@property NSMutableArray *moveDestinations;
-@property GameAction *action;
+@property NSMutableArray *currentPieces;
+
 @end
 
 @implementation GameScene
 
-//GamePiece* test[8][8];
 GamePiece *gameBoard[8][8];
 int boardTokens[8][8];
 
@@ -84,10 +47,10 @@ int boardTokens[8][8];
 
 -(void)createContent
 {
+    self.currentPieces = [[NSMutableArray alloc] init];
+    
     self.boardRows = kBoardRows;
     self.boardColumns = kBoardColumns;
-    self.moveDestinations = [[NSMutableArray alloc] init];
-    self.action = nil;
     
     self.backgroundColor = [SKColor colorWithRed:1.0 green:1.0 blue:1.0 alpha:1.0];
     
@@ -109,16 +72,12 @@ int boardTokens[8][8];
 
 -(void)setupBoard
 {
-    //SKSpriteNode *grid = [SKSpriteNode spriteNodeWithImageNamed:@"grid8"];
-    //grid.anchorPoint = CGPointMake(0.0, 0.0);
-    //grid.position = CGPointMake(kGridXOffset, kGridYOffset);
-    //[self addChild:grid];
-    
     GameBoard *board  = [[GameBoard alloc] initWithImageNamed:@"grid8"];
     board.anchorPoint = CGPointMake(0.0, 0.0);
     board.position = CGPointMake(kGridXOffset, kGridYOffset);
     [self addChild:board];
     
+    [self setupBoardCorners];
     [self resetBoard];
     [self resetBoardTokens];
     [self generateBoardTokens];
@@ -164,6 +123,36 @@ int boardTokens[8][8];
     [self.tapAreaBottom runAction:fadeOut];
 }
 
+- (void)setupBoardCorners {
+    SKSpriteNode *corner1 = [SKSpriteNode spriteNodeWithImageNamed:@"board_corner" ];
+    corner1.size = CGSizeMake(kTapAreaWidth, kTapAreaWidth);
+    corner1.anchorPoint = CGPointMake(0.0, 0.0);
+    corner1.position = CGPointMake(0.0, kGridYOffset + (kBoardRows * kRowSize));
+    corner1.alpha = 0.5;
+    [self addChild:corner1];
+    
+    SKSpriteNode *corner2 = [SKSpriteNode spriteNodeWithImageNamed:@"board_corner" ];
+    corner2.size = CGSizeMake(kTapAreaWidth, kTapAreaWidth);
+    corner2.anchorPoint = CGPointMake(0.0, 0.0);
+    corner2.position = CGPointMake(kGridXOffset + (kBoardColumns * kColumnSize), kGridYOffset + (kBoardRows * kRowSize));
+    corner2.alpha = 0.5;
+    [self addChild:corner2];
+    
+    SKSpriteNode *corner3 = [SKSpriteNode spriteNodeWithImageNamed:@"board_corner" ];
+    corner3.size = CGSizeMake(kTapAreaWidth, kTapAreaWidth);
+    corner3.anchorPoint = CGPointMake(0.0, 0.0);
+    corner3.position = CGPointMake(kGridXOffset + (kBoardColumns * kColumnSize), kGridYOffset - kTapAreaWidth);
+    corner3.alpha = 0.5;
+    [self addChild:corner3];
+    
+    SKSpriteNode *corner4 = [SKSpriteNode spriteNodeWithImageNamed:@"board_corner" ];
+    corner4.size = CGSizeMake(kTapAreaWidth, kTapAreaWidth);
+    corner4.anchorPoint = CGPointMake(0.0, 0.0);
+    corner4.position = CGPointMake(0.0, kGridYOffset - kTapAreaWidth);
+    corner4.alpha = 0.5;
+    [self addChild:corner4];
+}
+
 -(void)resetBoard {
     for (int col = 0; col < self.boardColumns; col++) {
 		for (int row = 0; row < self.boardRows; row++) {
@@ -199,15 +188,22 @@ int boardTokens[8][8];
 }
 
 -(void)generateBoardTokens {
-    boardTokens[1][1] = Sticky;
     boardTokens[2][2] = Sticky;
+    boardTokens[2][5] = Sticky;
+    boardTokens[5][2] = Sticky;
     boardTokens[5][5] = Sticky;
-    boardTokens[6][6] = Sticky;
-    [self addTokenAt:1 andColumn:1 andType:@"stickytoken"];
-    [self addTokenAt:2 andColumn:2 andType:@"stickytoken"];
-    [self addTokenAt:5 andColumn:5 andType:@"stickytoken"];
-    [self addTokenAt:6 andColumn:6 andType:@"stickytoken"];
-    
+    boardTokens[6][5] = LeftArrow;
+    boardTokens[1][2] = RightArrow;
+    boardTokens[5][1] = DownArrow;
+    boardTokens[2][6] = UpArrow;
+    [self addTokenAt:2 andColumn:2 andType:Sticky];
+    [self addTokenAt:2 andColumn:5 andType:Sticky];
+    [self addTokenAt:5 andColumn:2 andType:Sticky];
+    [self addTokenAt:5 andColumn:5 andType:Sticky];
+    [self addTokenAt:6 andColumn:5 andType:LeftArrow];
+    [self addTokenAt:1 andColumn:2 andType:RightArrow];
+    [self addTokenAt:5 andColumn:1 andType:DownArrow];
+    [self addTokenAt:2 andColumn:6 andType:UpArrow];
 }
 
 -(void)resetGame {
@@ -219,11 +215,14 @@ int boardTokens[8][8];
     
     SKLabelNode *winner = (SKLabelNode*)[self childNodeWithName:kWinnerLabelName];
     winner.hidden = YES;
+    
+    self.currentPlayer = Player1;
 }
 
 -(void) addMenuButton
 {
-    SKSpriteNode *menuButton = [SKSpriteNode spriteNodeWithColor:[UIColor redColor] size:CGSizeMake(45.0, 45.0)];
+    //SKSpriteNode *menuButton = [SKSpriteNode spriteNodeWithColor:[UIColor redColor] size:CGSizeMake(45.0, 45.0)];
+    SKSpriteNode *menuButton = [[SKSpriteNode alloc] initWithImageNamed:@"menu_button"];
     menuButton.anchorPoint = CGPointMake(0.0, 0.0);
     menuButton.position = CGPointMake(self.frame.size.width - menuButton.frame.size.width,
                                         self.frame.size.height - menuButton.frame.size.height);
@@ -250,75 +249,234 @@ int boardTokens[8][8];
     [self resetGame];
 }
 
--(void)addTokenAt:(int)row andColumn:(int)column andType:(NSString*)tokenType {
+-(void)addTokenAt:(int)row andColumn:(int)column andType:(TokenType)tokenType {
     CGFloat x = column * kColumnSize + kGridXOffset;
     CGFloat y = row * kRowSize +  kGridYOffset;
-    
     NSString *gamePieceImage = @"magnet";
+    
+    if (tokenType == Sticky) {
+        gamePieceImage = @"sticky_piece";
+    } else if (tokenType == UpArrow) {
+        gamePieceImage = @"up_arrow1";
+    } else if (tokenType == DownArrow) {
+        gamePieceImage = @"down_arrow1";
+    } else if (tokenType == LeftArrow) {
+        gamePieceImage = @"left_arrow1";
+    } else if (tokenType == RightArrow) {
+        gamePieceImage = @"right_arrow1";
+    }
+
     GamePiece *piece = [[GamePiece alloc] initWithImageNamed:gamePieceImage];
     piece.position = CGPointMake(x, y);
-    piece.name = @"stickytoken";
     piece.row = row;
     piece.column = column;
-    piece.size = CGSizeMake(22.0, 22.0);
-    piece.position = CGPointMake(piece.position.x + 4, piece.position.y + 5);
+    piece.size = CGSizeMake(30.0, 30.0);
+    piece.position = CGPointMake(piece.position.x, piece.position.y);
     [self addChild:piece];
 }
 
--(void)addGamePieceAt:(CGPoint)location
+- (void)addGamePieceAt:(CGPoint)location
 {
-    //SKSpriteNode *piece = [SKSpriteNode spriteNodeWithImageNamed:@"gamepiece3"];
     NSString *gamePieceImage;
     if (self.currentPlayer == Player1) {
         gamePieceImage = @"orangepiece";
     } else {
         gamePieceImage = @"bluepiece";
     }
-    GamePiece *piece = [[GamePiece alloc] initWithImageNamed:gamePieceImage];
     
+    GamePiece *piece = [[GamePiece alloc] initWithImageNamed:gamePieceImage];
     piece.position = location;
     piece.name = kGamePieceName;
     piece.player = self.currentPlayer;
-    self.lastPiece = piece;
+
     [self addChild:piece];
 }
 
--(void)addGamePieceHighlightFrom:(TapArea)origin toRow:(NSInteger)row toColumn:(NSInteger)column {
-    [self.highlight removeFromParent];
-    self.highlight = [SKSpriteNode spriteNodeWithImageNamed:@"tap_area"];
-    self.highlight.alpha = 0.3;
-    self.highlight.anchorPoint = CGPointMake(0.0, 0.0);
-    
-    if (origin == Top) {
-        self.highlight.size = CGSizeMake(kColumnSize, (self.boardRows - row) * kRowSize);
-        self.highlight.position = CGPointMake(column * kColumnSize + kGridXOffset, kGridYOffset + (row *kRowSize));
-    } else if (origin == Bottom) {
-        self.highlight.size = CGSizeMake(kColumnSize, (row + 1) * kRowSize);
-        self.highlight.position = CGPointMake(column * kColumnSize + kGridXOffset, kGridYOffset);
-    } else if (origin == LeftSide) {
-        self.highlight.size = CGSizeMake((column + 1) * kColumnSize, kRowSize);
-        self.highlight.position = CGPointMake(kGridXOffset, row * kRowSize + kGridYOffset);
-    } else if (origin == RightSide) {
-        self.highlight.size = CGSizeMake((self.boardColumns - column) * kColumnSize, kRowSize);
-        self.highlight.position = CGPointMake(kGridXOffset + (column * kColumnSize), row * kRowSize + kGridYOffset);
+- (void)removeHighlights {
+    for (SKNode *node in self.children) {
+        if ([node.name  isEqual: @"highlight"]) {
+            [node removeFromParent];
+        }
     }
-    
-    [self addChild:self.highlight];
 }
 
-- (void)calculateMove:(CGPoint)touchLocation {
+- (void)addGamePieceHighlightFrom:(Direction)direction {
+
+    [self removeHighlights];
+    
+    for (GamePiece *piece in self.currentPieces) {
+        
+        int startColumn = floor((piece.position.x - kGridXOffset) / kColumnSize);
+        int startRow = floor((piece.position.y - kGridYOffset) / kRowSize);
+        
+        if (startRow  < 0) {
+            startRow = 0;
+        }
+        
+        if (startColumn < 0) {
+            startColumn = 0;
+        }
+        
+        for (GridPosition *position in [piece.moveDestinations reverseObjectEnumerator]) {
+            SKSpriteNode *highlight = [SKSpriteNode spriteNodeWithImageNamed:@"highlight"];
+            highlight.alpha = 0.2;
+            if (piece.player == Player1) {
+                highlight.color = [UIColor orangeColor];
+                highlight.colorBlendFactor = 0.9;
+            } else if (piece.player == Player2) {
+                highlight.color = [UIColor blueColor];
+                highlight.colorBlendFactor = 0.5;
+            }
+
+            highlight.anchorPoint = CGPointMake(0.0, 0.0);
+            highlight.name = @"highlight";
+            
+            if (position.direction == Down) {
+                highlight.size = CGSizeMake(kColumnSize, (startRow - position.row) * kRowSize);
+                highlight.position = CGPointMake(position.column * kColumnSize + kGridXOffset, kGridYOffset + (position.row * kRowSize));
+            } else if (position.direction == Up) {
+                highlight.size = CGSizeMake(kColumnSize, (position.row - startRow + 1) * kRowSize);
+                highlight.position = CGPointMake(position.column * kColumnSize + kGridXOffset, (startRow * kRowSize) + kGridYOffset);
+            } else if (position.direction == Right) {
+                highlight.size = CGSizeMake((position.column - startColumn + 1) * kColumnSize, kRowSize);
+                highlight.position = CGPointMake((startColumn * kColumnSize) + kGridXOffset, position.row * kRowSize + kGridYOffset);
+            } else if (position.direction == Left) {
+                highlight.size = CGSizeMake((startColumn - position.column) * kColumnSize, kRowSize);
+                highlight.position = CGPointMake(kGridXOffset + (position.column * kColumnSize), position.row * kRowSize + kGridYOffset);
+            }
+
+            startRow = position.row;
+            startColumn = position.column;
+            
+            [self addChild:highlight];
+        }
+    }
+}
+
+- (void)endGameWithWinner:(PieceType)pieceType {
+    SKLabelNode *winnerLabel = (SKLabelNode*)[self childNodeWithName:kWinnerLabelName];
+    if (pieceType == Player1) {
+        winnerLabel.text =  [NSString stringWithFormat:@"%@", @"Player 1 Wins!"];
+        winnerLabel.hidden = NO;
+    } else if (pieceType == Player2) {
+        winnerLabel.text = [NSString stringWithFormat:@"%@", @"Player 2 Wins!"];
+        winnerLabel.hidden = NO;
+    } else if (pieceType == Tie) {
+        winnerLabel.text = [NSString stringWithFormat:@"%@", @"Tie!"];
+        winnerLabel.hidden = NO;
+    }
+}
+
+#if TARGET_OS_IPHONE // iOS
+-(void) touchesBegan:(NSSet *)touches withEvent:(UIEvent *)event {
+    if ([self.currentPiece hasActions]) {
+        return;
+    }
+    
+	NSArray *touchesArray = [touches allObjects];
+    CGPoint touchLocation = [touchesArray[0] locationInNode:self];
+    NSMutableArray *winners = [[NSMutableArray alloc] init];
+    PieceType winner = Empty;
+    
+    if ([self.currentPieces count] > 0 && [self.currentPieces[0] containsPoint:touchLocation]) {
+        
+        for (GamePiece *piece in self.currentPieces) {
+            [piece generateActions];
+        }
+        
+        GamePiece *piece = self.currentPieces[0];
+        [self.currentPieces removeObjectAtIndex:0];
+        self.currentPiece = piece;
+        
+        SKAction *sequence = [SKAction sequence:piece.actions];
+        [piece runAction:sequence];
+        
+        // update gameboard model with destination of gamepiece
+        GridPosition *desinationPosition = piece.moveDestinations[0];
+        gameBoard[desinationPosition.row][desinationPosition.column] = piece;
+
+        if (self.currentPlayer == Player1) {
+            self.currentPlayer = Player2;
+        } else {
+            self.currentPlayer = Player1;
+        }
+        
+        [self removeHighlights];
+        
+        winner = [self checkForWinnerAtRow:desinationPosition.row andColumn:desinationPosition.column];
+        if (winner != Empty) {
+            [winners addObject:[NSNumber numberWithInt:winner]];
+        }
+        
+        for (GamePiece *currentPiece in self.currentPieces) {
+            GridPosition *position = currentPiece.moveDestinations[0];
+            gameBoard[position.row][position.column] = currentPiece;
+            
+            winner = [self checkForWinnerAtRow:position.row andColumn:position.column];
+            if (winner != Empty) {
+                [winners addObject:[NSNumber numberWithInt:winner]];
+            }
+        }
+        
+        [self printBoard];
+        
+        if (winners.count > 0) {
+            int player1Wins = 0;
+            int player2Wins = 0;
+            for (NSNumber *pieceType in winners) {
+                if (pieceType == [NSNumber numberWithInt:Player1]) {
+                    player1Wins++;
+                } else if (pieceType == [NSNumber numberWithInt:Player2]) {
+                    player2Wins++;
+                }
+            }
+            if (player1Wins > 0 && player2Wins > 0) {
+                [self endGameWithWinner:Tie];
+            } else if (player1Wins > 0) {
+                [self endGameWithWinner:Player1];
+            } else if (player2Wins > 0) {
+                [self endGameWithWinner:Player2];
+            }
+
+        }
+        
+        //TODO: Tie if no more possible moves
+
+        return;
+    }
+    
+    [self calculateMoveFromLocation:touchLocation];
+    
+	// (optional) call super implementation to allow KKScene to dispatch touch events
+	[super touchesBegan:touches withEvent:event];
+}
+#else // Mac OS X
+-(void) mouseDown:(NSEvent *)event
+{
+	CGPoint location = [event locationInNode:self];
+	[self addSpaceshipAt:location];
+    
+	// (optional) call super implementation to allow KKScene to dispatch mouse events
+	[super mouseDown:event];
+}
+#endif
+
+- (void)calculateMoveFromLocation:(CGPoint)touchLocation {
     BOOL validMove = YES;
     Direction direction = -1;
     int startingRow = -1;
     int startingColumn = -1;
-    int destinationRow = -1;
-    int destinationColumn;
     int column = floor((touchLocation.x - kGridXOffset) / kColumnSize);
     int row = floor((touchLocation.y - kGridYOffset) / kRowSize);
-    destinationColumn = column;
-    CGPoint location = CGPointMake(0.0, 0.0);
     
-    [self.moveDestinations removeAllObjects];
+    if ([self.currentPieces count] > 0) {
+        [self.currentPieces[0] removeFromParent];
+    }
+    
+    [self removeHighlights];
+    [self.currentPieces removeAllObjects];
+    
+    CGPoint location = CGPointMake(0.0, 0.0);
     
     if ([self.tapAreaTop containsPoint:touchLocation]) {
         startingRow = self.boardRows-1;
@@ -347,53 +505,50 @@ int boardTokens[8][8];
     if (gameBoard[startingRow][startingColumn] != nil) {
         validMove = NO;
     } else {
-        [self checkDirection:direction andStartingRow:startingRow andStartingColumn:column];
-    }
-    if (validMove) {
-        //[self.moveDestinations removeAllObjects];
-        //GridPosition *position = [[GridPosition alloc] initWithRow:destinationRow andColumn:destinationColumn];
-        //[self.moveDestinations addObject:position];
-        [self.lastPiece removeFromParent];
-        [self addGamePieceAt:location];
-        [self addGamePieceHighlightFrom:Top toRow:destinationRow toColumn:destinationColumn];
+        NSString *gamePieceImage;
+        if (self.currentPlayer == Player1) {
+            gamePieceImage = @"orangepiece";
+        } else {
+            gamePieceImage = @"bluepiece";
+        }
+        
+        GamePiece *gamePiece = [[GamePiece alloc] initWithImageNamed:gamePieceImage];
+        gamePiece.position = location;
+        gamePiece.name = kGamePieceName;
+        gamePiece.player = self.currentPlayer;
+        [self.currentPieces addObject:gamePiece];
+        [self getDestinationForDirection:direction withGamePiece:gamePiece andStartingRow:startingRow andStartingColumn:startingColumn];
+        
+        [self addChild:gamePiece];
+        
+        [self addGamePieceHighlightFrom:direction];
     }
 }
 
-- (void)checkDirection:(Direction)direction andStartingRow:(int)startingRow andStartingColumn:(int)startingColumn {
+// assumption: only call this method with a valid row and column that is within the bounds of the board and does not contain a piece
+- (void)getDestinationForDirection:(Direction)direction withGamePiece:(GamePiece*)gamePiece andStartingRow:(int)startingRow andStartingColumn:(int)startingColumn {
     GridPosition *position = [[GridPosition alloc] init];
     
     switch (direction) {
         case Down:
             position.row = 0;
             position.column = startingColumn;
-            for (int row = self.boardRows-1; row >= 0;row--) {
+            position.direction = Down;
+            
+            for (int row = startingRow; row >= 0;row--) {
                 if (boardTokens[row][startingColumn] == Sticky) {
                     if (gameBoard[row][startingColumn] != nil) {
-                        // continue checking in same direction to find destination of piece in sticky square
-                        int x = row;
-                        int y = startingColumn;
-                        BOOL canMove = NO;
-                        for (int i = row-1; i >= 0;i--) {
-                            if (gameBoard[i][startingColumn] == nil) {
-                                canMove = YES;
-                                x = i;
-                            } else {
-                                break;
-                            }
-                        }
-                        if (canMove) {
-                            GamePiece *piece = gameBoard[row][startingColumn];
-                            CGPoint moveLocation = CGPointMake(startingColumn * kColumnSize + kGridXOffset, x * kRowSize + kGridYOffset);
-                            CGFloat distance = sqrtf((moveLocation.x-piece.position.x)*(moveLocation.x-piece.position.x)+
-                                                     (moveLocation.y-piece.position.y)*(moveLocation.y-piece.position.y));
-                            SKAction *move = [SKAction moveTo:moveLocation duration:distance/260.0];
-                            GridPosition *newPosition = [[GridPosition alloc] initWithRow:x andColumn:startingColumn];
-                            self.action = [[GameAction alloc] initWithGamepiece:piece andAction:move andPosition:newPosition];
-                            //gameBoard[x][startingColumn] = piece;
-
+                        // If the piece in the sticky square can move
+                        if (row - 1 >= 0 && gameBoard[row-1][startingColumn] == nil){
+                            GamePiece *stuckPiece = gameBoard[row][startingColumn];
+                            [stuckPiece resetMovement];
+                            [self getDestinationForDirection:Down withGamePiece:stuckPiece andStartingRow:row - 1 andStartingColumn:startingColumn];
+                            [self.currentPieces addObject:stuckPiece];
+                            
                             position.row = row;
                             break;
                         } else {
+                            // piece in sticky square cannot move
                             position.row = row + 1;
                             break;
                         }
@@ -405,14 +560,23 @@ int boardTokens[8][8];
                     position.row = row + 1;
                     break;
                 } else if (boardTokens[row][startingColumn] == UpArrow) {
-                    
+                    position.row = row;
+                    [self getDestinationForDirection:Up withGamePiece:gamePiece andStartingRow:row + 1 andStartingColumn:startingColumn];
+                    break;
                 } else if (boardTokens[row][startingColumn] == DownArrow) {
-                    
+                    position.row = row;
+                    [self getDestinationForDirection:Down withGamePiece:gamePiece andStartingRow:row - 1 andStartingColumn:startingColumn];
+                    break;
                 } else if (boardTokens[row][startingColumn] == LeftArrow) {
-                    
+                    position.row = row;
+                    [self getDestinationForDirection:Left withGamePiece:gamePiece andStartingRow:row andStartingColumn:startingColumn - 1];
+                    break;
                 } else if (boardTokens[row][startingColumn] == RightArrow) {
-                    
+                    position.row = row;
+                    [self getDestinationForDirection:Right withGamePiece:gamePiece andStartingRow:row andStartingColumn:startingColumn + 1];
+                    break;
                 }
+                
                 position.row = row;
             }
             break;
@@ -420,34 +584,22 @@ int boardTokens[8][8];
         case Up:
             position.row = self.boardRows-1;
             position.column = startingColumn;
-            for (int row = 1; row <= self.boardRows-1;row++) {
+            position.direction = Up;
+            
+            for (int row = startingRow; row <= self.boardRows-1;row++) {
                 if (boardTokens[row][startingColumn] == Sticky) {
                     if (gameBoard[row][startingColumn] != nil) {
-                        // continue checking in same direction to find destination of piece in sticky square
-                        int x = row;
-                        int y = startingColumn;
-                        BOOL canMove = NO;
-                        for (int i = row+1; i <= self.boardRows-1;i++) {
-                            if (gameBoard[i][startingColumn] == nil) {
-                                canMove = YES;
-                                x = i;
-                            } else {
-                                break;
-                            }
-                        }
-                        if (canMove) {
-                            GamePiece *piece = gameBoard[row][startingColumn];
-                            CGPoint moveLocation = CGPointMake(startingColumn * kColumnSize + kGridXOffset, x * kRowSize + kGridYOffset);
-                            CGFloat distance = sqrtf((moveLocation.x-piece.position.x)*(moveLocation.x-piece.position.x)+
-                                                     (moveLocation.y-piece.position.y)*(moveLocation.y-piece.position.y));
-                            SKAction *move = [SKAction moveTo:moveLocation duration:distance/260.0];
-                            GridPosition *newPosition = [[GridPosition alloc] initWithRow:x andColumn:startingColumn];
-                            self.action = [[GameAction alloc] initWithGamepiece:piece andAction:move andPosition:newPosition];
-                            //gameBoard[x][startingColumn] = piece;
+                        // If the piece in the sticky square can move
+                        if (row + 1 < kBoardRows && gameBoard[row+1][startingColumn] == nil){
+                            GamePiece *stuckPiece = gameBoard[row][startingColumn];
+                            [stuckPiece resetMovement];
+                            [self getDestinationForDirection:Up withGamePiece:stuckPiece andStartingRow:row + 1 andStartingColumn:startingColumn];
+                            [self.currentPieces addObject:stuckPiece];
                             
                             position.row = row;
                             break;
                         } else {
+                            // piece in sticky square cannot move
                             position.row = row - 1;
                             break;
                         }
@@ -459,13 +611,21 @@ int boardTokens[8][8];
                     position.row = row - 1;
                     break;
                 } else if (boardTokens[row][startingColumn] == UpArrow) {
-                    
+                    position.row = row;
+                    [self getDestinationForDirection:Up withGamePiece:gamePiece andStartingRow:row + 1 andStartingColumn:startingColumn];
+                    break;
                 } else if (boardTokens[row][startingColumn] == DownArrow) {
-                    
+                    position.row = row;
+                    [self getDestinationForDirection:Down withGamePiece:gamePiece andStartingRow:row - 1 andStartingColumn:startingColumn];
+                    break;
                 } else if (boardTokens[row][startingColumn] == LeftArrow) {
-                    
+                    position.row = row;
+                    [self getDestinationForDirection:Left withGamePiece:gamePiece andStartingRow:row andStartingColumn:startingColumn - 1];
+                    break;
                 } else if (boardTokens[row][startingColumn] == RightArrow) {
-                    
+                    position.row = row;
+                    [self getDestinationForDirection:Right withGamePiece:gamePiece andStartingRow:row andStartingColumn:startingColumn + 1];
+                    break;
                 }
                 
                 position.row = row;
@@ -475,34 +635,22 @@ int boardTokens[8][8];
         case Left:
             position.column = 0;
             position.row = startingRow;
-            for (int column = self.boardColumns-1; column >= 0;column--) {
+            position.direction = Left;
+            
+            for (int column = startingColumn; column >= 0;column--) {
                 if (boardTokens[startingRow][column] == Sticky) {
                     if (gameBoard[startingRow][column] != nil) {
-                        // continue checking in same direction to find destination of piece in sticky square
-                        int x = startingRow;
-                        int y = startingColumn;
-                        BOOL canMove = NO;
-                        for (int i = column-1; i >= 0;i--) {
-                            if (gameBoard[startingRow][i] == nil) {
-                                canMove = YES;
-                                y = i;
-                            } else {
-                                break;
-                            }
-                        }
-                        if (canMove) {
-                            GamePiece *piece = gameBoard[startingRow][column];
-                            CGPoint moveLocation = CGPointMake(y * kColumnSize + kGridXOffset, startingRow * kRowSize + kGridYOffset);
-                            CGFloat distance = sqrtf((moveLocation.x-piece.position.x)*(moveLocation.x-piece.position.x)+
-                                                     (moveLocation.y-piece.position.y)*(moveLocation.y-piece.position.y));
-                            SKAction *move = [SKAction moveTo:moveLocation duration:distance/260.0];
-                            GridPosition *newPosition = [[GridPosition alloc] initWithRow:startingRow andColumn:y];
-                            self.action = [[GameAction alloc] initWithGamepiece:piece andAction:move andPosition:newPosition];
-                            //gameBoard[startingRow][y] = piece;
+                        // If the piece in the sticky square can move
+                        if (column - 1 >= 0 && gameBoard[startingRow][column-1] == nil){
+                            GamePiece *stuckPiece = gameBoard[startingRow][column];
+                            [stuckPiece resetMovement];
+                            [self getDestinationForDirection:Left withGamePiece:stuckPiece andStartingRow:startingRow andStartingColumn:column - 1];
+                            [self.currentPieces addObject:stuckPiece];
                             
                             position.column = column;
                             break;
                         } else {
+                            // piece in sticky square cannot move
                             position.column = column + 1;
                             break;
                         }
@@ -514,13 +662,21 @@ int boardTokens[8][8];
                     position.column = column + 1;
                     break;
                 } else if (boardTokens[startingRow][column] == UpArrow) {
-                    
+                    position.column = column;
+                    [self getDestinationForDirection:Up withGamePiece:gamePiece andStartingRow:startingRow + 1 andStartingColumn:column];
+                    break;
                 } else if (boardTokens[startingRow][column] == DownArrow) {
-                    
+                    position.column = column;
+                    [self getDestinationForDirection:Down withGamePiece:gamePiece andStartingRow:startingRow - 1 andStartingColumn:column];
+                    break;
                 } else if (boardTokens[startingRow][column] == LeftArrow) {
-                    
+                    position.column = column;
+                    [self getDestinationForDirection:Left withGamePiece:gamePiece andStartingRow:startingRow andStartingColumn:column - 1];
+                    break;
                 } else if (boardTokens[startingRow][column] == RightArrow) {
-                    
+                    position.column = column;
+                    [self getDestinationForDirection:Right withGamePiece:gamePiece andStartingRow:startingRow andStartingColumn:column + 1];
+                    break;
                 }
                 
                 position.column = column;
@@ -530,34 +686,22 @@ int boardTokens[8][8];
         case Right:
             position.column = self.boardColumns-1;
             position.row = startingRow;
-            for (int column = 0; column <= self.boardColumns-1;column++) {
+            position.direction = Right;
+            
+            for (int column = startingColumn; column <= self.boardColumns-1;column++) {
                 if (boardTokens[startingRow][column] == Sticky) {
                     if (gameBoard[startingRow][column] != nil) {
-                        // continue checking in same direction to find destination of piece in sticky square
-                        int x = startingRow;
-                        int y = startingColumn;
-                        BOOL canMove = NO;
-                        for (int i = column+1; i <= self.boardColumns-1;i++) {
-                            if (gameBoard[startingRow][i] == nil) {
-                                canMove = YES;
-                                y = i;
-                            } else {
-                                break;
-                            }
-                        }
-                        if (canMove) {
-                            GamePiece *piece = gameBoard[startingRow][column];
-                            CGPoint moveLocation = CGPointMake(y * kColumnSize + kGridXOffset, startingRow * kRowSize + kGridYOffset);
-                            CGFloat distance = sqrtf((moveLocation.x-piece.position.x)*(moveLocation.x-piece.position.x)+
-                                                     (moveLocation.y-piece.position.y)*(moveLocation.y-piece.position.y));
-                            SKAction *move = [SKAction moveTo:moveLocation duration:distance/260.0];
-                            GridPosition *newPosition = [[GridPosition alloc] initWithRow:startingRow andColumn:y];
-                            self.action = [[GameAction alloc] initWithGamepiece:piece andAction:move andPosition:newPosition];
-                            //gameBoard[startingRow][y] = piece;
+                        // If the piece in the sticky square can move
+                        if (column + 1 < kBoardColumns && gameBoard[startingRow][column+1] == nil){
+                            GamePiece *stuckPiece = gameBoard[startingRow][column];
+                            [stuckPiece resetMovement];
+                            [self getDestinationForDirection:Right withGamePiece:stuckPiece andStartingRow:startingRow andStartingColumn:column + 1];
+                            [self.currentPieces addObject:stuckPiece];
                             
                             position.column = column;
                             break;
                         } else {
+                            // piece in sticky square cannot move
                             position.column = column - 1;
                             break;
                         }
@@ -569,13 +713,21 @@ int boardTokens[8][8];
                     position.column = column - 1;
                     break;
                 } else if (boardTokens[startingRow][column] == UpArrow) {
-                    
+                    position.column = column;
+                    [self getDestinationForDirection:Up withGamePiece:gamePiece andStartingRow:startingRow + 1 andStartingColumn:column];
+                    break;
                 } else if (boardTokens[startingRow][column] == DownArrow) {
-                    
+                    position.column = column;
+                    [self getDestinationForDirection:Down withGamePiece:gamePiece andStartingRow:startingRow - 1 andStartingColumn:column];
+                    break;
                 } else if (boardTokens[startingRow][column] == LeftArrow) {
-                    
+                    position.column = column;
+                    [self getDestinationForDirection:Left withGamePiece:gamePiece andStartingRow:startingRow andStartingColumn:column - 1];
+                    break;
                 } else if (boardTokens[startingRow][column] == RightArrow) {
-                    
+                    position.column = column;
+                    [self getDestinationForDirection:Right withGamePiece:gamePiece andStartingRow:startingRow andStartingColumn:column + 1];
+                    break;
                 }
                 
                 position.column = column;
@@ -585,124 +737,28 @@ int boardTokens[8][8];
             break;
     }
     
-    [self.moveDestinations addObject:position];
-    //return nil;
+    [gamePiece.moveDestinations addObject:position];
 }
 
-
-#if TARGET_OS_IPHONE // iOS
--(void) touchesBegan:(NSSet *)touches withEvent:(UIEvent *)event {
-    if ([self.currentPiece hasActions]) {
-        return;
-    }
-	NSArray *touchesArray = [touches allObjects];
-    CGPoint touchLocation = [touchesArray[0] locationInNode:self];
-    NSArray *nodes = [self nodesAtPoint:[touchesArray[0] locationInNode:self]];
-
-    for (SKNode *node in nodes) {
-        //NSLog(@"%@",node.name);
-        
-        if ([node.name isEqualToString:kGamePieceName]) {
-            if ([node isKindOfClass:[GamePiece class]]) {
-                GamePiece *piece = (GamePiece *)node;
-                if (!piece.isPlayed) {
-                    int destinationRow = -1;
-                    int destinationColumn = -1;
-                    for (GridPosition *position in self.moveDestinations) {
-                        destinationRow = position.row;
-                        destinationColumn = position.column;
-                        CGPoint moveLocation = CGPointMake(position.column * kColumnSize + kGridXOffset, position.row * kRowSize + kGridYOffset);
-                        CGFloat distance = sqrtf((moveLocation.x-piece.position.x)*(moveLocation.x-piece.position.x)+
-                                                 (moveLocation.y-piece.position.y)*(moveLocation.y-piece.position.y));
-                        SKAction *move = [SKAction moveTo:moveLocation duration:distance/260.0];
-                        [piece runAction:move];
-                        piece.moveDestination = moveLocation;
-                        
-                        self.currentPiece = piece;
-                    }
-                    
-//                    if (self.action != nil) {
-//                        GamePiece *actionPiece = self.action.gamePiece;
-//                        [actionPiece runAction:self.action.action];
-//                        int x = self.action.position.row;
-//                        int y = self.action.position.column;
-//                        gameBoard[x][y] = actionPiece;
-//                        self.action = nil;
-//                    }
-                    
-                    if (destinationRow != -1 && destinationColumn != -1) {
-                        piece.isPlayed = YES;
-                        gameBoard[destinationRow][destinationColumn] = piece;
-                        
-                        [self printBoard];
-                        
-                        if (self.currentPlayer == Player1) {
-                            self.currentPlayer = Player2;
-                        } else {
-                            self.currentPlayer = Player1;
-                        }
-                        [self.highlight removeFromParent];
-                        self.lastPiece = nil;
-                        
-                        if (self.action != nil) {
-                            GamePiece *actionPiece = self.action.gamePiece;
-                            int x = self.action.position.row;
-                            int y = self.action.position.column;
-                            gameBoard[x][y] = actionPiece;
-                            [self printBoard];
-                            [self checkForWinnerAtRow:x andColumn:y];
-                        }
-                        
-                        
-                        [self checkForWinnerAtRow:destinationRow andColumn:destinationColumn];
-                    }
-                    
-
-                    
-                    return;
-                }
-            }
-        }
-    }
-
-    [self calculateMove:touchLocation];
-    
-	// (optional) call super implementation to allow KKScene to dispatch touch events
-	[super touchesBegan:touches withEvent:event];
-}
-#else // Mac OS X
--(void) mouseDown:(NSEvent *)event
-{
-	/* Called when a mouse click occurs */
-	
-	CGPoint location = [event locationInNode:self];
-	[self addSpaceshipAt:location];
-
-	// (optional) call super implementation to allow KKScene to dispatch mouse events
-	[super mouseDown:event];
-}
-#endif
-
-
--(void) update:(CFTimeInterval)currentTime
+- (void)update:(CFTimeInterval)currentTime
 {
 	/* Called before each frame is rendered */
 	if ([self.currentPiece hasActions]) {
         CGRect destinationRect = CGRectMake(self.currentPiece.moveDestination.x, self.currentPiece.moveDestination.y, kPieceSize, kPieceSize);
         if (CGRectIntersectsRect(destinationRect, self.currentPiece.frame)) {
-            if (self.action != nil) {
-                GamePiece *actionPiece = self.action.gamePiece;
-                [actionPiece runAction:self.action.action];
-                self.action = nil;
+            if (self.currentPieces.count > 0) {
+                self.currentPiece = self.currentPieces[self.currentPieces.count-1];
+                [self.currentPieces removeObjectAtIndex:self.currentPieces.count-1];
+                SKAction *sequence = [SKAction sequence:self.currentPiece.actions];
+                [self.currentPiece runAction:sequence];
             }
         }
-        
     }
 	// (optional) call super implementation to allow KKScene to dispatch update events
 	[super update:currentTime];
 }
 
--(void)checkForWinnerAtRow:(int)row andColumn:(int)column {
+- (PieceType)checkForWinnerAtRow:(int)row andColumn:(int)column {
     PieceType winner = Empty;
     self.winningPositions = [[NSMutableArray alloc] init];
     NSString *winMethod = @"";
@@ -724,14 +780,7 @@ int boardTokens[8][8];
         }
     }
     
-    SKLabelNode *winnerLabel = (SKLabelNode*)[self childNodeWithName:kWinnerLabelName];
-    if (winner == Player1) {
-        winnerLabel.text =  [NSString stringWithFormat:@"%@ - %@", @"Player 1 Wins!", winMethod];
-        winnerLabel.hidden = NO;
-    } else if (winner == Player2) {
-        winnerLabel.text = [NSString stringWithFormat:@"%@ - %@", @"Player 2 Wins!", winMethod];
-        winnerLabel.hidden = NO;
-    }
+    return winner;
 }
 
 -(int)updateWinCounterWithRow:(int)row andColumn:(int)column andPlayer:(PieceType)player andWinCounter:(int)winCounter {
@@ -755,7 +804,7 @@ int boardTokens[8][8];
     for (int column = 0; column < self.boardRows; column++) {
         if (column > 0 && gameBoard[row][column].player != gameBoard[row][column-1].player) {
             winCounter = 0;
-            self.winningPositions = nil;
+            [self.winningPositions removeAllObjects];
         }
         currentPiece = gameBoard[row][column].player;
         winCounter = [self updateWinCounterWithRow:row andColumn:column andPlayer:currentPiece andWinCounter:winCounter];
@@ -764,7 +813,7 @@ int boardTokens[8][8];
             GridPosition *gridPosition = [[GridPosition alloc] initWithRow:row andColumn:column];
             [self.winningPositions addObject:gridPosition];
         } else {
-            self.winningPositions = nil;
+            [self.winningPositions removeAllObjects];
         }
         
         if (winCounter >= 4) {
@@ -782,7 +831,7 @@ int boardTokens[8][8];
     for (int row = 0; row < self.boardRows; row++) {
         if (row > 0 && gameBoard[row][column].player != gameBoard[row-1][column].player) {
             winCounter = 0;
-            self.winningPositions = nil;
+            [self.winningPositions removeAllObjects];
         }
         currentPiece = gameBoard[row][column].player;
         winCounter = [self updateWinCounterWithRow:row andColumn:column andPlayer:currentPiece andWinCounter:winCounter];
@@ -791,7 +840,7 @@ int boardTokens[8][8];
             GridPosition *gridPosition = [[GridPosition alloc] initWithRow:row andColumn:column];
             [self.winningPositions addObject:gridPosition];
         } else {
-            self.winningPositions = nil;
+            [self.winningPositions removeAllObjects];
         }
         
         if (winCounter >= 4) {
@@ -817,7 +866,7 @@ int boardTokens[8][8];
     for (row = startingRow, column = startingColumn; row < self.boardRows && column < self.boardColumns; row++,column++) {
         if (row > startingRow && column > startingColumn && gameBoard[row][column].player != gameBoard[row-1][column-1].player) {
             winCounter = 0;
-            self.winningPositions = nil;
+            [self.winningPositions removeAllObjects];
         }
         currentPiece = gameBoard[row][column].player;
         winCounter = [self updateWinCounterWithRow:row andColumn:column andPlayer:currentPiece andWinCounter:winCounter];
@@ -826,13 +875,15 @@ int boardTokens[8][8];
             GridPosition *gridPosition = [[GridPosition alloc] initWithRow:row andColumn:column];
             [self.winningPositions addObject:gridPosition];
         } else {
-            self.winningPositions = nil;
+            [self.winningPositions removeAllObjects];
         }
         
         if (winCounter >= 4) {
             return currentPiece;
         }
     }
+    
+    winCounter = 0;
     
     for (row = currentRow, column = currentColumn; row < self.boardRows && column >= 0;row++,column--) {
         startingRow = row;
@@ -842,7 +893,7 @@ int boardTokens[8][8];
     for (row = startingRow, column = startingColumn; row >= 0 && column < self.boardColumns;row--,column++) {
         if (row < startingRow && column > startingColumn && gameBoard[row][column].player != gameBoard[row+1][column-1].player) {
             winCounter = 0;
-            self.winningPositions = nil;
+            [self.winningPositions removeAllObjects];
         }
         currentPiece = gameBoard[row][column].player;
         winCounter = [self updateWinCounterWithRow:row andColumn:column andPlayer:currentPiece andWinCounter:winCounter];
@@ -851,7 +902,7 @@ int boardTokens[8][8];
             GridPosition *gridPosition = [[GridPosition alloc] initWithRow:row andColumn:column];
             [self.winningPositions addObject:gridPosition];
         } else {
-            self.winningPositions = nil;
+            [self.winningPositions removeAllObjects];
         }
         
         if (winCounter >= 4) {

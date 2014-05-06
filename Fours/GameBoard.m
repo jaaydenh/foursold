@@ -19,7 +19,7 @@
     return self;
 }
 
--(void)addGamePieceAt:(CGPoint)location andDestinationRow:(NSInteger)row andDestinationColumn:(NSInteger)column
+- (void)addGamePieceAt:(CGPoint)location andDestinationRow:(NSInteger)row andDestinationColumn:(NSInteger)column
 {
     //SKSpriteNode *piece = [SKSpriteNode spriteNodeWithImageNamed:@"gamepiece3"];
     NSString *gamePieceImage;

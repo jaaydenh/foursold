@@ -7,11 +7,13 @@
 //
 
 #import <Foundation/Foundation.h>
+#import "Utility.h"
 
 @interface GridPosition : NSObject
 
 @property (nonatomic, assign) int row;
 @property (nonatomic, assign) int column;
+@property (nonatomic, assign) Direction direction;
 
 - (id)initWithRow:(int)row andColumn:(int)column;
 
