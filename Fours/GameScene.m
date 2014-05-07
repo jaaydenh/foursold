@@ -196,6 +196,8 @@ int boardTokens[8][8];
     boardTokens[1][2] = RightArrow;
     boardTokens[5][1] = DownArrow;
     boardTokens[2][6] = UpArrow;
+    boardTokens[7][0] = Blocker;
+    boardTokens[0][7] = Blocker;
     [self addTokenAt:2 andColumn:2 andType:Sticky];
     [self addTokenAt:2 andColumn:5 andType:Sticky];
     [self addTokenAt:5 andColumn:2 andType:Sticky];
@@ -204,6 +206,8 @@ int boardTokens[8][8];
     [self addTokenAt:1 andColumn:2 andType:RightArrow];
     [self addTokenAt:5 andColumn:1 andType:DownArrow];
     [self addTokenAt:2 andColumn:6 andType:UpArrow];
+    [self addTokenAt:7 andColumn:0 andType:Blocker];
+    [self addTokenAt:0 andColumn:7 andType:Blocker];
 }
 
 -(void)resetGame {
@@ -255,16 +259,18 @@ int boardTokens[8][8];
     NSString *gamePieceImage = @"magnet";
     
     if (tokenType == Sticky) {
-        gamePieceImage = @"sticky_piece";
+        gamePieceImage = @"sticky_token";
     } else if (tokenType == UpArrow) {
-        gamePieceImage = @"up_arrow1";
+        gamePieceImage = @"up_arrow_token";
     } else if (tokenType == DownArrow) {
-        gamePieceImage = @"down_arrow1";
+        gamePieceImage = @"down_arrow_token";
     } else if (tokenType == LeftArrow) {
-        gamePieceImage = @"left_arrow1";
+        gamePieceImage = @"left_arrow_token";
     } else if (tokenType == RightArrow) {
-        gamePieceImage = @"right_arrow1";
-    }
+        gamePieceImage = @"right_arrow_token";
+    } else if (tokenType == Blocker) {
+        gamePieceImage = @"blocker_token";
+    } 
 
     GamePiece *piece = [[GamePiece alloc] initWithImageNamed:gamePieceImage];
     piece.position = CGPointMake(x, y);
@@ -575,6 +581,9 @@ int boardTokens[8][8];
                     position.row = row;
                     [self getDestinationForDirection:Right withGamePiece:gamePiece andStartingRow:row andStartingColumn:startingColumn + 1];
                     break;
+                } else if (boardTokens[row][startingColumn] == Blocker) {
+                    position.row = row + 1;
+                    break;
                 }
                 
                 position.row = row;
@@ -625,6 +634,9 @@ int boardTokens[8][8];
                 } else if (boardTokens[row][startingColumn] == RightArrow) {
                     position.row = row;
                     [self getDestinationForDirection:Right withGamePiece:gamePiece andStartingRow:row andStartingColumn:startingColumn + 1];
+                    break;
+                } else if (boardTokens[row][startingColumn] == Blocker) {
+                    position.row = row - 1;
                     break;
                 }
                 
@@ -677,6 +689,9 @@ int boardTokens[8][8];
                     position.column = column;
                     [self getDestinationForDirection:Right withGamePiece:gamePiece andStartingRow:startingRow andStartingColumn:column + 1];
                     break;
+                } else if (boardTokens[startingRow][column] == Blocker) {
+                    position.column = column + 1;
+                    break;
                 }
                 
                 position.column = column;
@@ -727,6 +742,9 @@ int boardTokens[8][8];
                 } else if (boardTokens[startingRow][column] == RightArrow) {
                     position.column = column;
                     [self getDestinationForDirection:Right withGamePiece:gamePiece andStartingRow:startingRow andStartingColumn:column + 1];
+                    break;
+                } else if (boardTokens[startingRow][column] == Blocker) {
+                    position.column = column - 1;
                     break;
                 }
                 

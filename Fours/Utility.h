@@ -28,7 +28,8 @@ typedef enum {
     UpArrow,
     DownArrow,
     LeftArrow,
-    RightArrow
+    RightArrow,
+    Blocker
 } TokenType;
 
 #pragma mark - Custom Type Definitions
