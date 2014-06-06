@@ -5,10 +5,10 @@
  */
 
 #import "KKScene.h"
+#import "GameKitTurnBasedMatchHelper.h"
 
 // IMPORTANT: in Kobold Kit all scenes must inherit from KKScene.
-@interface GameScene : KKScene
+@interface GameScene : KKScene <GameKitTurnBasedMatchHelperDelegate, UIGestureRecognizerDelegate>
 
-@property (nonatomic, retain) UIAlertView *popup;
 
 @end

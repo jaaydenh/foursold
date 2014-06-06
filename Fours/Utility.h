@@ -44,6 +44,7 @@ typedef enum {
 #define kGridXOffset 40.0
 #define kGridYOffset 150.0
 #define kGamePieceName @"gamepiece"
+#define kTokenName @"token"
 
 @interface Utility : NSObject
 

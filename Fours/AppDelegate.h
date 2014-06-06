@@ -5,7 +5,12 @@
  */
 
 #import "KKAppDelegate.h"
+#import "PlayerCache.h"
 
 @interface AppDelegate : KKAppDelegate
 
+@property (strong, nonatomic) PlayerCache *playerCache;
+
 @end
+
+#define APP_DELEGATE ((AppDelegate*)[UIApplication sharedApplication].delegate)

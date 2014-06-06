@@ -8,12 +8,18 @@
 
 #import <SpriteKit/SpriteKit.h>
 #import "GamePiece.h"
+#import "Utility.h"
 
 @interface GameBoard : SKSpriteNode
 
 @property int currentPlayer;
 @property GamePiece *lastPiece;
+@property NSMutableArray *layouts;
+@property int currentLayout;
+@property int lastLayout;
 
 - (id)initWithImageNamed:(NSString *)name;
+- (void)loadLayouts;
+- (NSArray *)getLayout;
 
 @end

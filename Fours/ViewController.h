@@ -4,6 +4,8 @@
  * KoboldAid/licenses/KoboldKitFree.License.txt
  */
 
+#import "GameKitHelper.h"
+
 @interface ViewController : KKViewController
 
 @end

@@ -5,6 +5,8 @@
  */
 
 #import "AppDelegate.h"
+#import <Crashlytics/Crashlytics.h>
+#import "Flurry.h"
 
 @implementation AppDelegate
 
@@ -13,7 +15,15 @@
 {
 	BOOL returnValue = [super application:application didFinishLaunchingWithOptions:launchOptions];
 	
-    // Override point for customization after application launch.
+    //note: iOS only allows one crash reporting tool per app; if using another, set to: NO
+    [Flurry setCrashReportingEnabled:NO];
+    [Flurry setLogLevel:FlurryLogLevelAll];
+    [Flurry startSession:@"NFMSNTC5TRH7M8XST7PH"];
+    
+    [Crashlytics startWithAPIKey:@"c40de2c6ebe04160b2342a3b4dc353265c0d0011"];
+    
+    self.playerCache = [[PlayerCache alloc] init];
+    
     return returnValue;
 }
 							

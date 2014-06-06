@@ -21,7 +21,7 @@
     self = [super initWithImageNamed:name];
     if (self) {
         self.anchorPoint = CGPointMake(0.0, 0.0);
-        self.isPlayed = NO;
+        //self.isPlayed = NO;
         self.size = CGSizeMake(kPieceSize, kPieceSize);
         
         self.moveDestinations = [[NSMutableArray alloc] init];
