@@ -36,11 +36,6 @@
 @property GameKitMatchData *gameData;
 @property BOOL isMultiplayer;
 
-@property UISwipeGestureRecognizer *swipeLeftGesture;
-@property UISwipeGestureRecognizer *swipeRightGesture;
-@property UISwipeGestureRecognizer *swipeUpGesture;
-@property UISwipeGestureRecognizer *swipeDownGesture;
-
 @end
 
 @implementation GameScene
@@ -51,23 +46,7 @@ int boardTokens[8][8];
 
 -(void)didMoveToView:(SKView *)view
 {
-    [GameKitTurnBasedMatchHelper sharedInstance].tbDelegate = self;
-    
-//    self.swipeLeftGesture = [[UISwipeGestureRecognizer alloc] initWithTarget:self action:@selector(handleSwipe:)];
-//    [self.swipeLeftGesture setDirection:UISwipeGestureRecognizerDirectionLeft];
-//    [view addGestureRecognizer:self.swipeLeftGesture];
-//    
-//    self.swipeRightGesture = [[UISwipeGestureRecognizer alloc] initWithTarget:self action:@selector(handleSwipe:)];
-//    [self.swipeRightGesture setDirection:UISwipeGestureRecognizerDirectionRight];
-//    [view addGestureRecognizer:self.swipeRightGesture];
-//    
-//    self.swipeUpGesture = [[UISwipeGestureRecognizer alloc] initWithTarget:self action:@selector(handleSwipe:)];
-//    [self.swipeUpGesture setDirection:UISwipeGestureRecognizerDirectionUp];
-//    [view addGestureRecognizer:self.swipeUpGesture];
-//    
-//    self.swipeDownGesture = [[UISwipeGestureRecognizer alloc] initWithTarget:self action:@selector(handleSwipe:)];
-//    [self.swipeDownGesture setDirection:UISwipeGestureRecognizerDirectionDown];
-//    [view addGestureRecognizer:self.swipeDownGesture];
+    [GameKitTurnBasedMatchHelper sharedInstance].gameSceneDelegate = self;
     
     if (!self.contentCreated) {
         [self createContent];
@@ -77,7 +56,7 @@ int boardTokens[8][8];
 
 -(void)createContent
 {
-    self.isMultiplayer = NO;
+    self.isMultiplayer = YES;
     
     self.currentPieces = [[NSMutableArray alloc] init];
     self.boardRows = kBoardRows;
@@ -92,15 +71,26 @@ int boardTokens[8][8];
     
     self.currentPlayer = Player1;
     
-    SKLabelNode *winnerLabel = [SKLabelNode labelNodeWithFontNamed:@"Chalkduster"];
+    SKLabelNode *winnerLabel = [SKLabelNode labelNodeWithFontNamed:@"Arial Bold"];
     winnerLabel.fontSize = 26;
-    winnerLabel.position = CGPointMake(self.frame.size.width/2 ,self.frame.size.height/2);
+    winnerLabel.fontColor = [UIColor blackColor];
+    winnerLabel.position = CGPointMake(self.frame.size.width/2 , 480);
     winnerLabel.zPosition = 1.0;
     winnerLabel.hidden = YES;
     winnerLabel.name = kWinnerLabelName;
     [self addChild:winnerLabel];
-    
+
+    [self addBackButton];
     [self addMenuButton];
+    [self loadSounds];
+}
+
+-(void)loadSounds {
+    [[OALSimpleAudio sharedInstance] preloadEffect:@"arrow1.mp3"];
+    [[OALSimpleAudio sharedInstance] preloadEffect:@"lose1.mp3"];
+    [[OALSimpleAudio sharedInstance] preloadEffect:@"sticky1.mp3"];
+    [[OALSimpleAudio sharedInstance] preloadEffect:@"win1.mp3"];
+    [[OALSimpleAudio sharedInstance] preloadEffect:@"menu.mp3"];
 }
 
 -(void)setupBoard
@@ -117,12 +107,14 @@ int boardTokens[8][8];
     [self layoutBoardTokens];
 }
 
-- (void)layoutBoardTokens {
-
+- (void)setTokenLayout {
     //if (self.gameData.tokenLayout == nil) {
         [self.gameData setTokenLayout:[self.board getLayout]];
     //}
+}
 
+- (void)layoutBoardTokens {
+   
     NSArray *tokenLayout = [self.gameData tokenLayout];
     
     int layoutPos = 0;
@@ -265,129 +257,59 @@ int boardTokens[8][8];
 {
     SKSpriteNode *menuButton = [[SKSpriteNode alloc] initWithImageNamed:@"menu_button"];
     menuButton.anchorPoint = CGPointMake(0.0, 0.0);
-    menuButton.position = CGPointMake(self.frame.size.width - menuButton.frame.size.width,
-                                        self.frame.size.height - menuButton.frame.size.height);
+    menuButton.position = CGPointMake(self.frame.size.width - menuButton.frame.size.width, self.frame.size.height - menuButton.frame.size.height);
 	[self addChild:menuButton];
 	
-	// KKButtonBehavior turns any node into a button
 	KKButtonBehavior* buttonBehavior = [KKButtonBehavior behavior];
 	buttonBehavior.selectedScale = 1.2;
 	[menuButton addBehavior:buttonBehavior];
 	
-	// observe button execute notification
-	[self observeNotification:KKButtonDidExecuteNotification
-					 selector:@selector(menuButtonDidExecute:)
-					   object:menuButton];
-
-	// preload the sound the button plays
-	[[OALSimpleAudio sharedInstance] preloadEffect:@"die.wav"];
+	[self observeNotification:KKButtonDidExecuteNotification selector:@selector(menuButtonDidExecute:) object:menuButton];
 }
 
 -(void) menuButtonDidExecute:(NSNotification*)notification
 {
-	[[OALSimpleAudio sharedInstance] playEffect:@"die.wav"];
-    
+    [self setTokenLayout];
+    [[OALSimpleAudio sharedInstance] playEffect:@"menu.mp3"];
     [Flurry logEvent:@"Menu_Button_Press"];
-    
     [self resetGame];
     
     //[[GameKitTurnBasedMatchHelper sharedInstance] findMatchWithMinPlayers:2 maxPlayers:2 showExistingMatches:YES];
 }
 
-- (void)willMoveFromView:(SKView *)view {
-    [view removeGestureRecognizer:self.swipeLeftGesture];
-    [view removeGestureRecognizer:self.swipeRightGesture];
-    [view removeGestureRecognizer:self.swipeUpGesture];
-    [view removeGestureRecognizer:self.swipeDownGesture];
+-(void) addBackButton
+{
+    SKSpriteNode *backButton = [[SKSpriteNode alloc] initWithImageNamed:@"left_arrow_token"];
+    backButton.anchorPoint = CGPointMake(0.0, 0.0);
+    backButton.position = CGPointMake(0, self.frame.size.height - backButton.frame.size.height);
+	[self addChild:backButton];
+	
+	KKButtonBehavior* buttonBehavior = [KKButtonBehavior behavior];
+	buttonBehavior.selectedScale = 1.2;
+	[backButton addBehavior:buttonBehavior];
+	
+	[self observeNotification:KKButtonDidExecuteNotification selector:@selector(backButtonDidExecute:) object:backButton];
 }
 
+-(void) backButtonDidExecute:(NSNotification*)notification
+{
+	[[OALSimpleAudio sharedInstance] playEffect:@"menu.wav"];
+    [Flurry logEvent:@"Back_Button_Press"];
+    SKTransition *slide = [SKTransition pushWithDirection:SKTransitionDirectionRight duration:1];
+    [self.kkView popSceneWithTransition:slide];
+
+    [[GameKitTurnBasedMatchHelper sharedInstance] loadMatches];
+}
+
+//- (void)willMoveFromView:(SKView *)view {
+//    [view removeGestureRecognizer:self.swipeLeftGesture];
+//    [view removeGestureRecognizer:self.swipeRightGesture];
+//    [view removeGestureRecognizer:self.swipeUpGesture];
+//    [view removeGestureRecognizer:self.swipeDownGesture];
+//}
+
 -(void)handleSwipe:(UISwipeGestureRecognizer *)recognizer {
-    //if (recognizer.direction == UISwipeGestureRecognizerDirectionLeft) {
-    
-//    if ([self.currentPiece hasActions]) {
-//        return;
-//    }
-//    
-//    if ([self.currentPieces count] > 0) {
-//        CGPoint locationOfTouch = [recognizer locationInView:self.view];
-//        locationOfTouch.y = self.scene.size.height - locationOfTouch.y;
-//        SKSpriteNode *curPiece = self.currentPieces[0];
-//        CGRect touchRect = CGRectMake(curPiece.position.x - 25, curPiece.position.y - 25, 80.0, 60.0);
-//        
-//        NSMutableArray *winners = [[NSMutableArray alloc] init];
-//        PieceType winner = Empty;
-//        
-//        //if (CGRectContainsPoint(touchRect, locationOfTouch)) {
-//            
-//            for (GamePiece *piece in self.currentPieces) {
-//                [piece generateActions];
-//            }
-//            
-//            GamePiece *piece = self.currentPieces[0];
-//            [self.currentPieces removeObjectAtIndex:0];
-//            self.currentPiece = piece;
-//            
-//            SKAction *sequence = [SKAction sequence:piece.actions];
-//            [piece runAction:sequence];
-//            
-//            // update gameboard model with destination of gamepiece
-//            GridPosition *desinationPosition = piece.moveDestinations[0];
-//            gameBoard[desinationPosition.row][desinationPosition.column] = piece;
-//            
-//            if (self.currentPlayer == Player1) {
-//                self.currentPlayer = Player2;
-//            } else {
-//                self.currentPlayer = Player1;
-//            }
-//            
-//            [self removeHighlights];
-//            
-//            winner = [self checkForWinnerAtRow:desinationPosition.row andColumn:desinationPosition.column];
-//            if (winner != Empty) {
-//                [winners addObject:[NSNumber numberWithInt:winner]];
-//            }
-//            
-//            for (GamePiece *currentPiece in self.currentPieces) {
-//                GridPosition *position = currentPiece.moveDestinations[0];
-//                gameBoard[position.row][position.column] = currentPiece;
-//                
-//                winner = [self checkForWinnerAtRow:position.row andColumn:position.column];
-//                if (winner != Empty) {
-//                    [winners addObject:[NSNumber numberWithInt:winner]];
-//                }
-//            }
-//            
-//            [self printBoard];
-//            
-//            if (winners.count > 0) {
-//                int player1Wins = 0;
-//                int player2Wins = 0;
-//                for (NSNumber *pieceType in winners) {
-//                    if (pieceType == [NSNumber numberWithInt:Player1]) {
-//                        player1Wins++;
-//                    } else if (pieceType == [NSNumber numberWithInt:Player2]) {
-//                        player2Wins++;
-//                    }
-//                }
-//                if (player1Wins > 0 && player2Wins > 0) {
-//                    [self endGameWithWinner:Tie];
-//                } else if (player1Wins > 0) {
-//                    [self endGameWithWinner:Player1];
-//                } else if (player2Wins > 0) {
-//                    [self endGameWithWinner:Player2];
-//                }
-//                
-//            }
-//            
-//            //TODO: Tie if no more possible moves
-//            if (self.isMultiplayer) {
-//                [self advanceTurn];
-//            }
-//
-//            return;
-//       // }
-//        //}
-//    }
+
 }
 
 -(void)addTokenAt:(int)row andColumn:(int)column andType:(TokenType)tokenType {
@@ -515,8 +437,8 @@ int boardTokens[8][8];
         winnerLabel.hidden = NO;
     }
     
-    NSDictionary *winParams = [NSDictionary dictionaryWithObjectsAndKeys:winner, @"Winner", nil];
-    
+    NSDictionary *winParams = @{@"Winner": winner};
+    [[OALSimpleAudio sharedInstance] playEffect:@"win1.mp3"];
     [Flurry logEvent:@"Game_Over" withParameters:winParams];
 }
 
@@ -541,78 +463,79 @@ int boardTokens[8][8];
         }
         
         if (CGRectContainsPoint(touchRect, touchLocation)) {
-        //if ([self.currentPieces[0] containsPoint:touchLocation]) {
-        
-        for (GamePiece *piece in self.currentPieces) {
-            [piece generateActions];
-        }
-        
-        GamePiece *piece = self.currentPieces[0];
-        [self.currentPieces removeObjectAtIndex:0];
-        self.currentPiece = piece;
-        
-        SKAction *sequence = [SKAction sequence:piece.actions];
-        [piece removeAllActions];
-        [piece setSize:CGSizeMake(kPieceSize, kPieceSize)];
-        
-            [piece runAction:sequence completion:^(void) {
-
-            }];
-        
-        // update gameboard model with destination of gamepiece
-        GridPosition *desinationPosition = piece.moveDestinations[0];
-        gameBoard[desinationPosition.row][desinationPosition.column] = piece;
-
-        if (self.currentPlayer == Player1) {
-            self.currentPlayer = Player2;
-        } else {
-            self.currentPlayer = Player1;
-        }
-        
-        [self removeHighlights];
-        
-        winner = [self checkForWinnerAtRow:desinationPosition.row andColumn:desinationPosition.column];
-        if (winner != Empty) {
-            [winners addObject:[NSNumber numberWithInt:winner]];
-        }
-        
-        for (GamePiece *currentPiece in self.currentPieces) {
-            GridPosition *position = currentPiece.moveDestinations[0];
-            gameBoard[position.row][position.column] = currentPiece;
+            //if ([self.currentPieces[0] containsPoint:touchLocation]) {
+            [[OALSimpleAudio sharedInstance] playEffect:@"sticky1.mp3"];
             
-            winner = [self checkForWinnerAtRow:position.row andColumn:position.column];
+            for (GamePiece *piece in self.currentPieces) {
+                [piece generateActions];
+            }
+            
+            GamePiece *piece = self.currentPieces[0];
+            [self.currentPieces removeObjectAtIndex:0];
+            self.currentPiece = piece;
+            
+            SKAction *sequence = [SKAction sequence:piece.actions];
+            [piece removeAllActions];
+            [piece setSize:CGSizeMake(kPieceSize, kPieceSize)];
+            
+                [piece runAction:sequence completion:^(void) {
+
+                }];
+            
+            // update gameboard model with destination of gamepiece
+            GridPosition *desinationPosition = piece.moveDestinations[0];
+            gameBoard[desinationPosition.row][desinationPosition.column] = piece;
+
+            if (self.currentPlayer == Player1) {
+                self.currentPlayer = Player2;
+            } else {
+                self.currentPlayer = Player1;
+            }
+            
+            [self removeHighlights];
+            
+            winner = [self checkForWinnerAtRow:desinationPosition.row andColumn:desinationPosition.column];
             if (winner != Empty) {
                 [winners addObject:[NSNumber numberWithInt:winner]];
             }
-        }
-        
-        [self printBoard];
-        
-        if (winners.count > 0) {
-            int player1Wins = 0;
-            int player2Wins = 0;
-            for (NSNumber *pieceType in winners) {
-                if (pieceType == [NSNumber numberWithInt:Player1]) {
-                    player1Wins++;
-                } else if (pieceType == [NSNumber numberWithInt:Player2]) {
-                    player2Wins++;
+            
+            for (GamePiece *currentPiece in self.currentPieces) {
+                GridPosition *position = currentPiece.moveDestinations[0];
+                gameBoard[position.row][position.column] = currentPiece;
+                
+                winner = [self checkForWinnerAtRow:position.row andColumn:position.column];
+                if (winner != Empty) {
+                    [winners addObject:[NSNumber numberWithInt:winner]];
                 }
             }
-            if (player1Wins > 0 && player2Wins > 0) {
-                [self endGameWithWinner:Tie];
-            } else if (player1Wins > 0) {
-                [self endGameWithWinner:Player1];
-            } else if (player2Wins > 0) {
-                [self endGameWithWinner:Player2];
+            
+            [self printBoard];
+            
+            if (winners.count > 0) {
+                int player1Wins = 0;
+                int player2Wins = 0;
+                for (NSNumber *pieceType in winners) {
+                    if ([pieceType  isEqual: @(Player1)]) {
+                        player1Wins++;
+                    } else if ([pieceType  isEqual: @(Player2)]) {
+                        player2Wins++;
+                    }
+                }
+                if (player1Wins > 0 && player2Wins > 0) {
+                    [self endGameWithWinner:Tie];
+                } else if (player1Wins > 0) {
+                    [self endGameWithWinner:Player1];
+                } else if (player2Wins > 0) {
+                    [self endGameWithWinner:Player2];
+                }
+
+            }
+            
+            //TODO: Tie if no more possible moves
+            if (self.isMultiplayer) {
+                [self advanceTurn];
             }
 
-        }
-        
-        //TODO: Tie if no more possible moves
-        if (self.isMultiplayer) {
-            [self advanceTurn];
-        }
-        return;
             
         } else {
             [self calculateMoveFromLocation:touchLocation];
@@ -669,9 +592,9 @@ int boardTokens[8][8];
             gamePieceImage = @"bluepiece";
         }
         
-        self.gameData.currentMove = [NSArray arrayWithObjects:[NSNumber numberWithInt:row],
-                                                              [NSNumber numberWithInt:column],
-                                                              [NSNumber numberWithInt:direction], nil];
+        self.gameData.currentMove = @[@(row),
+                                                              @(column),
+                                                              [NSNumber numberWithInt:direction]];
         
         //self.gameData.currentMove = [[GridPosition alloc] initWithRow:row andColumn:column];
         //self.gameData.currentMove.direction = direction;
@@ -1156,13 +1079,23 @@ int boardTokens[8][8];
     [GameKitTurnBasedMatchHelper sharedInstance].currentMatch = match;
     
     //    [self loadMatches];
-    
 }
 
 -(void)layoutMatch:(GKTurnBasedMatch *)match
 {
     NSLog(@"Viewing match where it's not our turn...");
     NSString *statusString;
+    [GameKitTurnBasedMatchHelper sharedInstance].currentMatch = match;
+    
+    self.gameData = [[GameKitMatchData alloc] initWithData:match.matchData];
+    
+
+    if (self.gameData.tokenLayout) {
+        [self layoutBoardTokens];
+    }
+    if (self.gameData.moves) {
+        
+    }
     
     if (match.status == GKTurnBasedMatchStatusEnded)
     {
@@ -1171,12 +1104,8 @@ int boardTokens[8][8];
     else
     {
         int playerNum = [match.participants indexOfObject:match.currentParticipant] + 1;
-        
         statusString = [NSString stringWithFormat:@"Player %d's Turn", playerNum];
-        
-        self.gameData = [[GameKitMatchData alloc] initWithData:match.matchData];
     }
-    
 }
 
 -(void)takeTurn:(GKTurnBasedMatch *)match
@@ -1208,20 +1137,20 @@ int boardTokens[8][8];
     [av show];
 }
 
-- (void)didFetchMatches:(NSArray*)matches
-{
-    [self loadMatches];
-    //[self.menuCollection reloadData];
-    [[GameKitTurnBasedMatchHelper sharedInstance] cachePlayerData];
-}
+//- (void)didFetchMatches:(NSArray*)matches
+//{
+//    [self loadMatches];
+//    //[self.menuCollection reloadData];
+//    [[GameKitTurnBasedMatchHelper sharedInstance] cachePlayerData];
+//}
 
-- (void)loadMatches
-{
-    // TODO: Sort by last move time.
-    self.sortedMatches = [NSMutableArray arrayWithArray:[[GameKitTurnBasedMatchHelper sharedInstance].matches allValues]];
-    //[self.menuCollection reloadData];
-    
-}
+//- (void)loadMatches
+//{
+//    // TODO: Sort by last move time.
+//    self.sortedMatches = [NSMutableArray arrayWithArray:[[GameKitTurnBasedMatchHelper sharedInstance].matches allValues]];
+//    //[self.menuCollection reloadData];
+//    
+//}
 
 - (void)advanceTurn {
     GKTurnBasedMatch *currentMatch = [GameKitTurnBasedMatchHelper sharedInstance].currentMatch;
@@ -1229,8 +1158,8 @@ int boardTokens[8][8];
     NSData *updatedMatchData = [self.gameData encodeMatchData];
     
     NSUInteger currentIndex = [currentMatch.participants indexOfObject:currentMatch.currentParticipant];
-    GKTurnBasedParticipant *nextParticipant = [currentMatch.participants objectAtIndex:((currentIndex + 1) % [currentMatch.participants count])];
-    NSArray *sortedPlayerOrder = [NSArray arrayWithObjects:nextParticipant, currentMatch.currentParticipant, nil];
+    GKTurnBasedParticipant *nextParticipant = (currentMatch.participants)[((currentIndex + 1) % [currentMatch.participants count])];
+    NSArray *sortedPlayerOrder = @[nextParticipant, currentMatch.currentParticipant];
     
     [currentMatch endTurnWithNextParticipants:sortedPlayerOrder turnTimeout:GKTurnTimeoutDefault matchData:updatedMatchData completionHandler:^(NSError *error) {
         if (error) {

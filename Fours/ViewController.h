@@ -5,7 +5,10 @@
  */
 
 #import "GameKitHelper.h"
+#import "GameKitTurnBasedMatchHelper.h"
+#import "PlayerCache.h"
+#import "KKScene.h"
 
-@interface ViewController : KKViewController
+@interface ViewController : KKViewController<UIScrollViewDelegate, GameKitTurnBasedMatchHelperDelegate, GameKitHelperProtocol>
 
 @end

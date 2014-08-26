@@ -53,11 +53,8 @@ static GameKitTurnBasedMatchHelper *sharedHelper = nil;
     [self loadMatches];
 }
 
-- (void)findMatchWithMinPlayers:(int)minPlayers
-                     maxPlayers:(int)maxPlayers
-            showExistingMatches:(BOOL)showExistingMatches
+- (void)findMatchWithMinPlayers:(int)minPlayers maxPlayers:(int)maxPlayers showExistingMatches:(BOOL)showExistingMatches
 {
-    
     //    self.presentingViewController = viewController;
     
     GKMatchRequest *request = [[GKMatchRequest alloc] init];
@@ -85,14 +82,14 @@ static GameKitTurnBasedMatchHelper *sharedHelper = nil;
     
     [self dismissModalViewController];
     
-    GKTurnBasedParticipant *firstParticipant = [match.participants objectAtIndex:0];
+    GKTurnBasedParticipant *firstParticipant = (match.participants)[0];
     
     if (firstParticipant.lastTurnDate == NULL)
     {
         // It's a new game!
         
         NSLog(@"didFindMatch: New game");
-        [self.tbDelegate enterNewGame:match];
+        [self.gameSceneDelegate enterNewGame:match];
     }
     else
     {
@@ -101,14 +98,14 @@ static GameKitTurnBasedMatchHelper *sharedHelper = nil;
             // It's your turn!
             
             NSLog(@"didFindMatch: It's your turn.");
-            [self.tbDelegate takeTurn:match];
+            [self.gameSceneDelegate takeTurn:match];
         }
         else
         {
             // It's not your turn, just display the game state.
             
             NSLog(@"didFindMatch: Not your turn.");
-            [self.tbDelegate layoutMatch:match];
+            [self.gameSceneDelegate layoutMatch:match];
         }
     }
 }
@@ -215,9 +212,7 @@ static GameKitTurnBasedMatchHelper *sharedHelper = nil;
                                      
                                      // Send notification.
                                      
-                                     NSDictionary *userInfo = [NSDictionary dictionaryWithObjectsAndKeys:
-                                                               match, @"match",
-                                                               nil];
+                                     NSDictionary *userInfo = @{@"match": match};
                                      
                                      [[NSNotificationCenter defaultCenter] postNotificationName:NOTIF_MATCH_WON_BY_LOCAL_PLAYER
                                                                                          object:nil
@@ -264,20 +259,18 @@ static GameKitTurnBasedMatchHelper *sharedHelper = nil;
             {
                 // It's your turn.
                 
-                [self.tbDelegate takeTurn:match];
+                [self.gameSceneDelegate takeTurn:match];
             }
             else
             {
                 // Not your turn.
                 
-                [self.tbDelegate layoutMatch:match];
+                [self.gameSceneDelegate layoutMatch:match];
             }
         }
     }
     
-    NSDictionary *userInfo = [NSDictionary dictionaryWithObjectsAndKeys:
-                              match, @"match",
-                              nil];
+    NSDictionary *userInfo = @{@"match": match};
     
     
     [[NSNotificationCenter defaultCenter] postNotificationName:NOTIF_TURN_EVENT
@@ -291,11 +284,11 @@ static GameKitTurnBasedMatchHelper *sharedHelper = nil;
     
     if ([match.matchID isEqualToString:self.currentMatch.matchID])
     {
-        [self.tbDelegate receiveEndGame:match];
+        [self.gameSceneDelegate receiveEndGame:match];
     }
     else
     {
-        [self.tbDelegate sendNotice:@"Another Game Ended!" forMatch:match];
+        [self.gameSceneDelegate sendNotice:@"Another Game Ended!" forMatch:match];
     }
 }
 
@@ -321,16 +314,16 @@ BOOL _loadingMatches;
             [self.matches setValue:oneMatch forKey:oneMatch.matchID];
         }
         
-        if (self.tbDelegate)
+        if (self.viewControllerDelegate)
         {
-            [self.tbDelegate didFetchMatches:matches];
+            [self.viewControllerDelegate didFetchMatches:matches];
         }
         
         _loadingMatches = NO;
     }];
 }
 
-- (void)cachePlayerData
+- (void)cachePlayerData:(NSObject<GameKitHelperProtocol>*)delegate
 {
     NSMutableArray *ids = [NSMutableArray array];
     
@@ -345,7 +338,7 @@ BOOL _loadingMatches;
                 continue;
             }
             
-            BOOL cached = ([APP_DELEGATE.playerCache.players objectForKey:participant.playerID] != nil);
+            BOOL cached = ((APP_DELEGATE.playerCache.players)[participant.playerID] != nil);
             BOOL alreadyAdded = [ids containsObject:participant.playerID];
             
             if (!cached && !alreadyAdded)
@@ -356,7 +349,11 @@ BOOL _loadingMatches;
         }
     }
     
-    [[GameKitTurnBasedMatchHelper sharedInstance] getPlayerInfo:ids delegate:APP_DELEGATE.playerCache];
+    [[GameKitTurnBasedMatchHelper sharedInstance] getPlayerInfo:ids delegate:delegate];
+}
+
+- (void)cachePlayerData {
+    [self cachePlayerData:APP_DELEGATE.playerCache];
 }
 
 + (NSString*)matchStatusDisplayName:(GKTurnBasedMatchStatus)status
@@ -507,8 +504,7 @@ BOOL _loadingMatches;
     {
         for (int i = 0; i < matchSize; i++)
         {
-            GKTurnBasedParticipant *p = [match.participants
-                                         objectAtIndex:(currentIndex + 1 + i) %
+            GKTurnBasedParticipant *p = (match.participants)[(currentIndex + 1 + i) %
                                          matchSize];
             
             if (![p.playerID isEqualToString:match.currentParticipant.playerID] &&

@@ -32,13 +32,15 @@
 
 @property (strong) GKTurnBasedMatch *currentMatch;
 @property (strong) NSMutableDictionary *matches;
-@property (nonatomic, assign) id <GameKitTurnBasedMatchHelperDelegate> tbDelegate;
+@property (nonatomic, assign) id <GameKitTurnBasedMatchHelperDelegate> gameSceneDelegate;
+@property (nonatomic, assign) id <GameKitTurnBasedMatchHelperDelegate> viewControllerDelegate;
 
 + (GameKitTurnBasedMatchHelper *)sharedInstance;
 + (NSString*)matchStatusDisplayName:(GKTurnBasedMatchStatus)status;
 + (GKTurnBasedParticipant*)participantForLocalPlayerInMatch:(GKTurnBasedMatch*)match;
 
 - (void)findMatchWithMinPlayers:(int)minPlayers maxPlayers:(int)maxPlayers showExistingMatches:(BOOL)showExistingMatches;
+- (void)cachePlayerData:(NSObject<GameKitHelperProtocol>*)delegate;
 - (void)cachePlayerData;
 - (void)loadMatches;
 - (void)quitMatch:(GKTurnBasedMatch*)match forParticipant:(GKTurnBasedParticipant*)participant;
