@@ -19,27 +19,15 @@ BOOL _matchStarted;
 
 #pragma mark Singleton stuff
 
-+ (id)sharedInstance
++ (instancetype)sharedGameKitHelper
 {
     static GameKitHelper *sharedGameKitHelper;
     static dispatch_once_t onceToken;
-    
     dispatch_once(&onceToken, ^{
         sharedGameKitHelper = [[GameKitHelper alloc] init];
     });
-    
     return sharedGameKitHelper;
 }
-
-//+ (instancetype)sharedGameKitHelper
-//{
-//    static GameKitHelper *sharedGameKitHelper;
-//    static dispatch_once_t onceToken;
-//    dispatch_once(&onceToken, ^{
-//        sharedGameKitHelper = [[GameKitHelper alloc] init];
-//    });
-//    return sharedGameKitHelper;
-//}
 
 - (id)init
 {
@@ -70,7 +58,7 @@ BOOL _matchStarted;
             _enableGameCenter = YES;
             [self localPlayerWasAuthenticated];
             [[NSNotificationCenter defaultCenter] postNotificationName:LocalPlayerIsAuthenticated object:nil];
-            //authenticatedPlayer: is an example method name. Create your own method that is called after the loacal player is authenticated.
+            //authenticatedPlayer: is an example method name. Create your own method that is called after the local player is authenticated.
             //[self authenticatedPlayer: localPlayer];
         } else {
             _enableGameCenter = NO;
@@ -178,16 +166,15 @@ BOOL _matchStarted;
     
     if ([playerList count] > 0)
     {
-        [GKPlayer loadPlayersForIdentifiers:playerList
-                      withCompletionHandler:^(NSArray* players, NSError* error) {
+        [GKPlayer loadPlayersForIdentifiers:playerList withCompletionHandler:^(NSArray* players, NSError* error) {
                           
-                          [self setLastError:error];
+            [self setLastError:error];
                           
-                          if ([delegate respondsToSelector:@selector(onPlayerInfoReceived:)])
-                          {
-                              [delegate onPlayerInfoReceived:players];
-                          }
-                      }];
+            if ([delegate respondsToSelector:@selector(onPlayerInfoReceived:)])
+            {
+                [delegate onPlayerInfoReceived:players];
+            }
+        }];
 	}
 }
 

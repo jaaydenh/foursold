@@ -43,9 +43,7 @@
     
     // Send a notification.
     
-    NSDictionary *userInfo = [NSDictionary dictionaryWithObjectsAndKeys:
-                              players, @"players",
-                              nil];
+    NSDictionary *userInfo = @{@"players": players};
     
     [[NSNotificationCenter defaultCenter] postNotificationName:NOTIF_PLAYER_CACHE_DID_FETCH_PLAYERS
                                                         object:nil
@@ -55,17 +53,15 @@
 
 - (GKPlayer*)playerWithID:(NSString*)playerID
 {
-    return (GKPlayer*)[self.players objectForKey:playerID];
+    return (GKPlayer*)(self.players)[playerID];
 }
 
 - (void)cachePhoto:(UIImage*)photo forPlayer:(GKPlayer*)player
 {
     [self.playerPhotos setValue:photo forKey:player.playerID];
     
-    NSDictionary *userInfo = [NSDictionary dictionaryWithObjectsAndKeys:
-                              player, @"player",
-                              photo, @"photo",
-                              nil];
+    NSDictionary *userInfo = @{@"player": player,
+                              @"photo": photo};
     
     [[NSNotificationCenter defaultCenter] postNotificationName:NOTIF_PLAYER_CACHE_DID_FETCH_PLAYER_PHOTO
                                                         object:nil
@@ -74,7 +70,7 @@
 
 - (UIImage*)photoForPlayer:(GKPlayer*)player
 {
-    UIImage *img = [self.playerPhotos objectForKey:player.playerID];
+    UIImage *img = (self.playerPhotos)[player.playerID];
     
     if (!img)
     {
@@ -86,7 +82,7 @@
 
 - (GKPlayer*)player:(NSInteger)playerIndex amongParticipants:(NSArray*)participants
 {
-    NSString *playerID = ((GKTurnBasedParticipant*)[participants objectAtIndex:playerIndex]).playerID;
+    NSString *playerID = ((GKTurnBasedParticipant*)participants[playerIndex]).playerID;
     return [self playerWithID:playerID];
 }
 

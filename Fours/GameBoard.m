@@ -14,7 +14,7 @@
     self = [super initWithImageNamed:name];
     if (self) {
         self.layouts = [[NSMutableArray alloc] init];
-        self.currentLayout = 0;
+        self.currentLayout = 1;
         
     }
     return self;
@@ -41,13 +41,13 @@
 
 - (void)loadLayouts {
     
-    NSNumber *n = [NSNumber numberWithInt:None];
-    NSNumber *s = [NSNumber numberWithInt:Sticky];
-    NSNumber *u = [NSNumber numberWithInt:UpArrow];
-    NSNumber *d = [NSNumber numberWithInt:DownArrow];
-    NSNumber *l = [NSNumber numberWithInt:LeftArrow];
-    NSNumber *r = [NSNumber numberWithInt:RightArrow];
-    NSNumber *b = [NSNumber numberWithInt:Blocker];
+    NSNumber *n = @(None);
+    NSNumber *s = @(Sticky);
+    NSNumber *u = @(UpArrow);
+    NSNumber *d = @(DownArrow);
+    NSNumber *l = @(LeftArrow);
+    NSNumber *r = @(RightArrow);
+    NSNumber *b = @(Blocker);
     
     NSArray *layout1 = @[n,n,n,n,n,n,n,n,
                          n,n,n,n,n,n,s,n,

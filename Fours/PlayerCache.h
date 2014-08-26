@@ -15,7 +15,7 @@
 
 //@protocol PlayerCacheDelegate <NSObject>
 //
-//- (void)playerInfoWasFetched:(NSArray*)players;
+//- (void)playerInfoWasFetched:(NSMutableDictionary*)players;
 //
 //@end
 

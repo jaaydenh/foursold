@@ -6,9 +6,11 @@
 
 #import "KKScene.h"
 #import "GameKitTurnBasedMatchHelper.h"
+#import "Match.h"
 
 // IMPORTANT: in Kobold Kit all scenes must inherit from KKScene.
 @interface GameScene : KKScene <GameKitTurnBasedMatchHelperDelegate, UIGestureRecognizerDelegate>
 
+- (void)setTokenLayout;
 
 @end
