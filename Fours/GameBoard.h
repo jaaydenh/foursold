@@ -11,7 +11,10 @@
 #import "Utility.h"
 
 @interface GameBoard : SKSpriteNode
-
+{
+    GamePiece *board[8][8];
+    int tokens[8][8];
+}
 @property int currentPlayer;
 @property GamePiece *lastPiece;
 @property NSMutableArray *layouts;

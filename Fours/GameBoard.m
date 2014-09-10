@@ -15,7 +15,7 @@
     if (self) {
         self.layouts = [[NSMutableArray alloc] init];
         self.currentLayout = 1;
-        
+
     }
     return self;
 }
@@ -25,9 +25,9 @@
     //SKSpriteNode *piece = [SKSpriteNode spriteNodeWithImageNamed:@"gamepiece3"];
     NSString *gamePieceImage;
     if (self.currentPlayer == Player1) {
-        gamePieceImage = @"orangepiece";
+        gamePieceImage = @"gamepiece4";
     } else {
-        gamePieceImage = @"bluepiece";
+        gamePieceImage = @"gamepiece6";
     }
     GamePiece *piece = [[GamePiece alloc] initWithImageNamed:gamePieceImage];
     

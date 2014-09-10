@@ -81,6 +81,7 @@ typedef NS_ENUM(NSInteger, IIMySceneZPosition)
         _spriteToHostHorizontalAndVerticalScrolling = spriteToHostHorizontalAndVerticalScrolling;
         _spriteForVerticalScrolling = spriteForVerticalScrolling;
         _contentOffset = (CGPoint){0,0};
+        
     }
     
     return self;
@@ -88,7 +89,7 @@ typedef NS_ENUM(NSInteger, IIMySceneZPosition)
 
 - (void)displayMatchList:(NSArray*)matches {
     int matchNumber = 0;
-    [self addNewGameButton];
+
     for (GKTurnBasedMatch *match in matches) {
         
         Match *matchNode = [Match spriteNodeWithColor:[SKColor greenColor]
@@ -165,6 +166,7 @@ typedef NS_ENUM(NSInteger, IIMySceneZPosition)
 
 - (void)createContent {
     self.backgroundColor = [SKColor colorWithRed:1.0 green:1.0 blue:1.0 alpha:1.0];
+    [self addNewGameButton];
 }
 
 - (void) addNewGameButton
@@ -236,7 +238,7 @@ typedef NS_ENUM(NSInteger, IIMySceneZPosition)
         _contentSize = contentSize;
         [self.spriteToScroll setSize:contentSize];
         [self.spriteForScrollingGeometry setSize:contentSize];
-        [self.spriteForScrollingGeometry setPosition:(CGPoint){0, -contentSize.height}];
+        //[self.spriteForScrollingGeometry setPosition:(CGPoint){0, -contentSize.height}];
     }
 }
 

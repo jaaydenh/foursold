@@ -11,6 +11,8 @@
 // IMPORTANT: in Kobold Kit all scenes must inherit from KKScene.
 @interface GameScene : KKScene <GameKitTurnBasedMatchHelperDelegate, UIGestureRecognizerDelegate>
 
+@property (nonatomic, strong) GKTurnBasedMatch *currentMatch;
+
 - (void)setTokenLayout;
 
 @end

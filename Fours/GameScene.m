@@ -11,13 +11,20 @@
 #import "Utility.h"
 #import "Flurry.h"
 #import "GameKitMatchData.h"
+#import "FPosition.h"
 
 #pragma mark - Private GameScene Properties
 
 @interface GameScene ()
+{
+    //GamePiece *gameBoard[8][8];
+    //int boardTokens[8][8];
+}
+
+@property NSMutableArray *grid;
+@property NSMutableArray *tokens;
 
 @property BOOL contentCreated;
-//@property BOOL validMove;
 @property SKSpriteNode *tapAreaLeft;
 @property SKSpriteNode *tapAreaRight;
 @property SKSpriteNode *tapAreaTop;
@@ -31,23 +38,22 @@
 @property GamePiece *currentPiece;
 @property NSMutableArray *currentPieces;
 @property GameBoard *board;
-@property (nonatomic, strong) GKTurnBasedMatch *currentMatch;
 @property (nonatomic, strong) NSMutableArray *sortedMatches;
 @property GameKitMatchData *gameData;
 @property BOOL isMultiplayer;
+@property (nonatomic, readwrite) NSInteger dimension;
 
 @end
 
 @implementation GameScene
 
 // Gameboard is constructed by replaying the list of moves contained in gameData
-GamePiece *gameBoard[8][8];
-int boardTokens[8][8];
+
 
 -(void)didMoveToView:(SKView *)view
 {
     [GameKitTurnBasedMatchHelper sharedInstance].gameSceneDelegate = self;
-    
+
     if (!self.contentCreated) {
         [self createContent];
         self.contentCreated = YES;
@@ -57,19 +63,16 @@ int boardTokens[8][8];
 -(void)createContent
 {
     self.isMultiplayer = YES;
-    
     self.currentPieces = [[NSMutableArray alloc] init];
     self.boardRows = kBoardRows;
     self.boardColumns = kBoardColumns;
-    
+    self.dimension = kBoardRows;
     self.backgroundColor = [SKColor colorWithRed:1.0 green:1.0 blue:1.0 alpha:1.0];
-    
     self.gameData = [[GameKitMatchData alloc] init];
+    self.currentPlayer = Player1;
     
     [self setupTapAreas];
     [self setupBoard];
-    
-    self.currentPlayer = Player1;
     
     SKLabelNode *winnerLabel = [SKLabelNode labelNodeWithFontNamed:@"Arial Bold"];
     winnerLabel.fontSize = 26;
@@ -96,15 +99,17 @@ int boardTokens[8][8];
 -(void)setupBoard
 {
     self.board = [[GameBoard alloc] initWithImageNamed:@"grid8"];
+
+    
     self.board.anchorPoint = CGPointMake(0.0, 0.0);
     self.board.position = CGPointMake(kGridXOffset, kGridYOffset);
     [self addChild:self.board];
     
     [self.board loadLayouts];
     [self setupBoardCorners];
-    [self resetBoard];
+    [self initWithDimension:self.boardRows];
     [self resetBoardTokens];
-    [self layoutBoardTokens];
+    [self initTokensWithDimention:self.boardRows];
 }
 
 - (void)setTokenLayout {
@@ -113,22 +118,41 @@ int boardTokens[8][8];
     //}
 }
 
-- (void)layoutBoardTokens {
-   
+- (void)initTokensWithDimention:(NSInteger)dimension {
+    self.tokens = [[NSMutableArray alloc] initWithCapacity:dimension];
     NSArray *tokenLayout = [self.gameData tokenLayout];
     
     int layoutPos = 0;
-    for (int row = self.boardRows - 1; row >= 0; row--) {
-        for (int col = 0; col < self.boardColumns; col++) {
-
-			boardTokens[row][col] = [tokenLayout[layoutPos] intValue];
+    
+    for (NSInteger row = dimension - 1; row >= 0; row--) {
+        NSMutableArray *array = [[NSMutableArray alloc] initWithCapacity:dimension];
+        for (NSInteger col = 0; col < dimension; col++) {
+            
+            [array addObject:[NSNumber numberWithInteger:[tokenLayout[layoutPos] integerValue]]];
+			//boardTokens[row][col] = [tokenLayout[layoutPos] intValue];
             if ([tokenLayout[layoutPos] intValue] != None) {
                 [self addTokenAt:row andColumn:col andType:[tokenLayout[layoutPos] intValue]];
             }
             
             layoutPos++;
 		}
+        [self.tokens insertObject:array atIndex:0];
 	}
+}
+
+-(void)initWithDimension:(NSInteger)dimension {
+    self.grid = [[NSMutableArray alloc] initWithCapacity:dimension];
+    
+    for (NSInteger i = 0; i < dimension; i++) {
+        NSMutableArray *array = [[NSMutableArray alloc] initWithCapacity:dimension];
+        for (NSInteger j = 0; j < dimension; j++) {
+            //[array addObject:[[M2Cell alloc] initWithPosition:M2PositionMake(i, j)]];
+            GamePiece *piece = [[GamePiece alloc] init];
+            piece.player = Empty;
+            [array addObject:piece];
+        }
+        [self.grid addObject:array];
+    }
 }
 
 -(void)setupTapAreas
@@ -201,12 +225,16 @@ int boardTokens[8][8];
     [self addChild:corner4];
 }
 
--(void)resetBoard {
-    for (int col = 0; col < self.boardColumns; col++) {
-		for (int row = 0; row < self.boardRows; row++) {
-			gameBoard[row][col] = nil;
-		}
-	}
+-(GamePiece *)gamePieceAtPosition:(FPosition)position {
+    if (position.row >= self.dimension || position.col >= self.dimension ||
+        position.row < 0 || position.col < 0) return nil;
+    return [[self.grid objectAtIndex:position.row] objectAtIndex:position.col];
+}
+
+-(NSNumber *)tokenAtPosition:(FPosition)position {
+    if (position.row >= self.dimension || position.col >= self.dimension ||
+        position.row < 0 || position.col < 0) return nil;
+    return [[self.tokens objectAtIndex:position.row] objectAtIndex:position.col];
 }
 
 -(void)printBoard {
@@ -214,9 +242,9 @@ int boardTokens[8][8];
     NSString *rowString = @"";
     for (int row = self.boardRows-1; row >= 0; row--) {
 		for (int col = 0; col < self.boardColumns; col++) {
-            if (gameBoard[row][col].player == Player1) {
+            if ([self gamePieceAtPosition:FPositionMake(row, col)].player == Player1) {
                 rowString = [rowString stringByAppendingString:@"1 "];
-            } else if (gameBoard[row][col].player == Player2) {
+            } else if ([self gamePieceAtPosition:FPositionMake(row, col)].player == Player2) {
                 rowString = [rowString stringByAppendingString:@"2 "];
             } else {
                 rowString = [rowString stringByAppendingString:@"0 "];
@@ -230,7 +258,8 @@ int boardTokens[8][8];
 -(void)resetBoardTokens {
     for (int col = 0; col < self.boardColumns; col++) {
 		for (int row = 0; row < self.boardRows; row++) {
-			boardTokens[col][row] = None;
+			[[self.tokens objectAtIndex:row] setObject:[NSNumber numberWithInteger:None] atIndex:col];
+            //boardTokens[col][row] = None;
 		}
 	}
 }
@@ -244,9 +273,9 @@ int boardTokens[8][8];
         [node removeFromParent];
 	}];
     
-    [self resetBoard];
+    [self initWithDimension:self.boardRows];
     [self resetBoardTokens];
-    [self layoutBoardTokens];
+    [self initTokensWithDimention:self.boardRows];
     SKLabelNode *winner = (SKLabelNode*)[self childNodeWithName:kWinnerLabelName];
     winner.hidden = YES;
     
@@ -269,11 +298,11 @@ int boardTokens[8][8];
 
 -(void) menuButtonDidExecute:(NSNotification*)notification
 {
-    [self setTokenLayout];
+    //[self setTokenLayout];
     [[OALSimpleAudio sharedInstance] playEffect:@"menu.mp3"];
     [Flurry logEvent:@"Menu_Button_Press"];
-    [self resetGame];
-    
+    //[self resetGame];
+    //[self layoutMatch:self.currentMatch];
     //[[GameKitTurnBasedMatchHelper sharedInstance] findMatchWithMinPlayers:2 maxPlayers:2 showExistingMatches:YES];
 }
 
@@ -301,17 +330,6 @@ int boardTokens[8][8];
     [[GameKitTurnBasedMatchHelper sharedInstance] loadMatches];
 }
 
-//- (void)willMoveFromView:(SKView *)view {
-//    [view removeGestureRecognizer:self.swipeLeftGesture];
-//    [view removeGestureRecognizer:self.swipeRightGesture];
-//    [view removeGestureRecognizer:self.swipeUpGesture];
-//    [view removeGestureRecognizer:self.swipeDownGesture];
-//}
-
--(void)handleSwipe:(UISwipeGestureRecognizer *)recognizer {
-
-}
-
 -(void)addTokenAt:(int)row andColumn:(int)column andType:(TokenType)tokenType {
     CGFloat x = column * kColumnSize + kGridXOffset;
     CGFloat y = row * kRowSize +  kGridYOffset;
@@ -333,28 +351,9 @@ int boardTokens[8][8];
 
     GamePiece *piece = [[GamePiece alloc] initWithImageNamed:gamePieceImage];
     piece.position = CGPointMake(x, y);
-    //piece.row = row;
-    //piece.column = column;
     piece.size = CGSizeMake(30.0, 30.0);
     piece.position = CGPointMake(piece.position.x, piece.position.y);
     piece.name = kGamePieceName;
-    [self addChild:piece];
-}
-
-- (void)addGamePieceAt:(CGPoint)location
-{
-    NSString *gamePieceImage;
-    if (self.currentPlayer == Player1) {
-        gamePieceImage = @"orangepiece";
-    } else {
-        gamePieceImage = @"bluepiece";
-    }
-    
-    GamePiece *piece = [[GamePiece alloc] initWithImageNamed:gamePieceImage];
-    piece.position = location;
-    piece.name = kGamePieceName;
-    piece.player = self.currentPlayer;
-
     [self addChild:piece];
 }
 
@@ -442,6 +441,32 @@ int boardTokens[8][8];
     [Flurry logEvent:@"Game_Over" withParameters:winParams];
 }
 
+-(void)makeMoveFromRow:(NSInteger)row andColumn:(NSInteger)column andDirection:(Direction)direction andPieceType:(PieceType)pieceType {
+    [self executeMoveFromRow:row andColumn:column andDirection:direction andPieceType:pieceType];
+    for (GamePiece *currentPiece in self.currentPieces) {
+        GridPosition *position = currentPiece.moveDestinations[0];
+        [[self.grid objectAtIndex:position.row] setObject:currentPiece atIndex:position.column];
+
+        //gameBoard[position.row][position.column] = currentPiece;
+        //    return [[self.grid objectAtIndex:position.row] objectAtIndex:position.col];
+    }
+    [self.currentPieces removeAllObjects];
+}
+
+-(void)renderGameBoard {
+    for (int row = self.boardRows-1; row >= 0; row--) {
+		for (int column = 0; column < self.boardColumns; column++) {
+            if ([self gamePieceAtPosition:FPositionMake(row, column)].player != Empty) {
+                GamePiece *gamePiece = [self gamePieceAtPosition:FPositionMake(row, column)];
+                //GamePiece *gamePiece = gameBoard[row][column];
+                CGPoint location = CGPointMake(column * kColumnSize + kGridXOffset, row * kRowSize +  kGridYOffset);
+                gamePiece.position = location;
+                [self addChild:gamePiece];
+            }
+		}
+	}
+}
+
 #if TARGET_OS_IPHONE // iOS
 -(void) touchesBegan:(NSSet *)touches withEvent:(UIEvent *)event {
     if ([self.currentPiece hasActions]) {
@@ -463,7 +488,6 @@ int boardTokens[8][8];
         }
         
         if (CGRectContainsPoint(touchRect, touchLocation)) {
-            //if ([self.currentPieces[0] containsPoint:touchLocation]) {
             [[OALSimpleAudio sharedInstance] playEffect:@"sticky1.mp3"];
             
             for (GamePiece *piece in self.currentPieces) {
@@ -478,13 +502,12 @@ int boardTokens[8][8];
             [piece removeAllActions];
             [piece setSize:CGSizeMake(kPieceSize, kPieceSize)];
             
-                [piece runAction:sequence completion:^(void) {
-
-                }];
+            [piece runAction:sequence completion:^(void) {}];
             
             // update gameboard model with destination of gamepiece
             GridPosition *desinationPosition = piece.moveDestinations[0];
-            gameBoard[desinationPosition.row][desinationPosition.column] = piece;
+            [[self.grid objectAtIndex:desinationPosition.row] setObject:piece atIndex:desinationPosition.column];
+            //gameBoard[desinationPosition.row][desinationPosition.column] = piece;
 
             if (self.currentPlayer == Player1) {
                 self.currentPlayer = Player2;
@@ -501,7 +524,8 @@ int boardTokens[8][8];
             
             for (GamePiece *currentPiece in self.currentPieces) {
                 GridPosition *position = currentPiece.moveDestinations[0];
-                gameBoard[position.row][position.column] = currentPiece;
+                [[self.grid objectAtIndex:position.row] setObject:currentPiece atIndex:position.column];
+                //gameBoard[position.row][position.column] = currentPiece;
                 
                 winner = [self checkForWinnerAtRow:position.row andColumn:position.column];
                 if (winner != Empty) {
@@ -528,32 +552,18 @@ int boardTokens[8][8];
                 } else if (player2Wins > 0) {
                     [self endGameWithWinner:Player2];
                 }
-
             }
             
             //TODO: Tie if no more possible moves
             if (self.isMultiplayer) {
                 [self advanceTurn];
             }
-
-            
         } else {
             [self calculateMoveFromLocation:touchLocation];
         }
-        
-            //SKSpriteNode *curPiece = self.currentPieces[0];
-            //CGRect touchRect = CGRectMake(curPiece.position.x - 15, curPiece.position.y - 15, 55.0, 55.0);
-            
-           // if (!CGRectContainsPoint(touchRect, touchLocation)) {
-                
-             //   [self calculateMoveFromLocation:touchLocation];
-            //}
-            
-
     } else {
         [self calculateMoveFromLocation:touchLocation];
     }
-    
 
 	// (optional) call super implementation to allow KKScene to dispatch touch events
 	[super touchesBegan:touches withEvent:event];
@@ -568,69 +578,6 @@ int boardTokens[8][8];
 	[super mouseDown:event];
 }
 #endif
-
-- (void)calculateMoveFromRow:(int)row andColumn:(int)column andDirection:(Direction)direction {
-    CGPoint location = CGPointMake(0.0, 0.0);
-    
-    if (direction == Up) {
-        location = CGPointMake(column * kColumnSize + kGridXOffset, kGridYOffset - kRowSize - 5);
-    } else if (direction == Down) {
-        location = CGPointMake(column * kColumnSize + kGridXOffset, kGridYOffset + kRowSize * self.boardRows + 5);
-    } else if (direction == Left) {
-        location = CGPointMake(self.boardColumns * kColumnSize + kGridXOffset + 5, row * kRowSize +  kGridYOffset);
-    } else if (direction == Right) {
-        location = CGPointMake(5, row * kRowSize + kGridYOffset);
-    }
-    
-    if (gameBoard[row][column] != nil || boardTokens[row][column] == Blocker) {
-        //validMove = NO;
-    } else {
-        NSString *gamePieceImage;
-        if (self.currentPlayer == Player1) {
-            gamePieceImage = @"orangepiece";
-        } else {
-            gamePieceImage = @"bluepiece";
-        }
-        
-        self.gameData.currentMove = @[@(row),
-                                                              @(column),
-                                                              [NSNumber numberWithInt:direction]];
-        
-        //self.gameData.currentMove = [[GridPosition alloc] initWithRow:row andColumn:column];
-        //self.gameData.currentMove.direction = direction;
-        
-        GamePiece *gamePiece = [[GamePiece alloc] initWithImageNamed:gamePieceImage];
-        gamePiece.position = location;
-        gamePiece.name = kGamePieceName;
-        gamePiece.player = self.currentPlayer;
-        gamePiece.direction = direction;
-        [self.currentPieces addObject:gamePiece];
-        //gamePiece.anchorPoint = CGPointMake(0.5, 0.5);
-        NSMutableArray *pulseActions = [[NSMutableArray alloc] init];
-        NSMutableArray *moveActions = [[NSMutableArray alloc] init];
-        SKAction *growAction = [SKAction resizeToWidth:kPieceSize + 10 height:kPieceSize + 10 duration:0.5];
-        SKAction *growMove = [SKAction moveByX:-5 y:-5 duration:0.5];
-        SKAction *shrinkAction = [SKAction resizeToWidth:kPieceSize height:kPieceSize duration:0.5];
-        SKAction *skrinkMove = [SKAction moveByX:5 y:5 duration:0.5];
-
-        [pulseActions addObject:growAction];
-        [moveActions addObject:growMove];
-        [pulseActions addObject:shrinkAction];
-        [moveActions addObject:skrinkMove];
-        SKAction *sequence1 = [SKAction sequence:pulseActions];
-        SKAction *sequence2 = [SKAction sequence:moveActions];
-        SKAction *pulse = [SKAction repeatActionForever:sequence1];
-        SKAction *move = [SKAction repeatActionForever:sequence2];
-        [gamePiece runAction:pulse];
-        [gamePiece runAction:move];
-        
-        [self getDestinationForDirection:direction withGamePiece:gamePiece andStartingRow:row andStartingColumn:column];
-        
-        [self addChild:gamePiece];
-        
-        [self addGamePieceHighlightFrom:direction];
-    }
-}
 
 - (void)calculateMoveFromLocation:(CGPoint)touchLocation {
     Direction direction = -1;
@@ -665,26 +612,112 @@ int boardTokens[8][8];
     } else {
         return;
     }
-
+    
     [self calculateMoveFromRow:startingRow andColumn:startingColumn andDirection:direction];
 }
 
-// assumption: only call this method with a valid row and column that is within the bounds of the board and does not contain a piece
-- (void)getDestinationForDirection:(Direction)direction withGamePiece:(GamePiece*)gamePiece andStartingRow:(int)startingRow andStartingColumn:(int)startingColumn {
-    GridPosition *position = [[GridPosition alloc] init];
+- (void)calculateMoveFromRow:(int)row andColumn:(int)column andDirection:(Direction)direction {
+    CGPoint location = CGPointMake(0.0, 0.0);
     
+    if (direction == Up) {
+        location = CGPointMake(column * kColumnSize + kGridXOffset, kGridYOffset - kRowSize - 5);
+    } else if (direction == Down) {
+        location = CGPointMake(column * kColumnSize + kGridXOffset, kGridYOffset + kRowSize * self.boardRows + 5);
+    } else if (direction == Left) {
+        location = CGPointMake(self.boardColumns * kColumnSize + kGridXOffset + 5, row * kRowSize +  kGridYOffset);
+    } else if (direction == Right) {
+        location = CGPointMake(5, row * kRowSize + kGridYOffset);
+    }
+    
+    //if (gameBoard[row][column] != nil || boardTokens[row][column] == Blocker) {
+    if ([self gamePieceAtPosition:FPositionMake(row, column)].player != Empty) {
+        //validMove = NO;
+    } else {
+        NSString *gamePieceImage;
+        if (self.currentPlayer == Player1) {
+            gamePieceImage = @"gamepiece4";
+        } else {
+            gamePieceImage = @"gamepiece6";
+        }
+        
+        self.gameData.currentMove = @[@(row),@(column),[NSNumber numberWithInt:direction]];
+        
+        GamePiece *gamePiece = [[GamePiece alloc] initWithImageNamed:gamePieceImage];
+        gamePiece.position = location;
+        gamePiece.name = kGamePieceName;
+        gamePiece.player = self.currentPlayer;
+        gamePiece.direction = direction;
+        [self.currentPieces addObject:gamePiece];
+        //gamePiece.anchorPoint = CGPointMake(0.5, 0.5);
+        NSMutableArray *pulseActions = [[NSMutableArray alloc] init];
+        NSMutableArray *moveActions = [[NSMutableArray alloc] init];
+        SKAction *growAction = [SKAction resizeToWidth:kPieceSize + 10 height:kPieceSize + 10 duration:0.5];
+        SKAction *growMove = [SKAction moveByX:-5 y:-5 duration:0.5];
+        SKAction *shrinkAction = [SKAction resizeToWidth:kPieceSize height:kPieceSize duration:0.5];
+        SKAction *skrinkMove = [SKAction moveByX:5 y:5 duration:0.5];
+
+        [pulseActions addObject:growAction];
+        [moveActions addObject:growMove];
+        [pulseActions addObject:shrinkAction];
+        [moveActions addObject:skrinkMove];
+        SKAction *sequence1 = [SKAction sequence:pulseActions];
+        SKAction *sequence2 = [SKAction sequence:moveActions];
+        SKAction *pulse = [SKAction repeatActionForever:sequence1];
+        SKAction *move = [SKAction repeatActionForever:sequence2];
+        [gamePiece runAction:pulse];
+        [gamePiece runAction:move];
+        
+        [self getDestinationForDirection:direction withGamePiece:gamePiece andStartingRow:row andStartingColumn:column];
+        
+        [self addChild:gamePiece];
+        
+        [self addGamePieceHighlightFrom:direction];
+    }
+}
+
+- (void)executeMoveFromRow:(NSInteger)row andColumn:(NSInteger)column andDirection:(Direction)direction andPieceType:(PieceType)pieceType {
+    //CGPoint location = CGPointMake(0.0, 0.0);
+    
+    //if (gameBoard[row][column] != nil || boardTokens[row][column] == Blocker) {
+        //validMove = NO;
+    //} else {
+        NSString *gamePieceImage;
+        if (pieceType == Player1) {
+            gamePieceImage = @"gamepiece4";
+        } else {
+            gamePieceImage = @"gamepiece6";
+        }
+        
+        GamePiece *gamePiece = [[GamePiece alloc] initWithImageNamed:gamePieceImage];
+        //gamePiece.position = CGPointMake(0, 0);
+        gamePiece.name = kGamePieceName;
+        gamePiece.player = pieceType;
+        gamePiece.direction = direction;
+        [self.currentPieces addObject:gamePiece];
+        
+        [self getDestinationForDirection:direction withGamePiece:gamePiece andStartingRow:row andStartingColumn:column];
+    //}
+}
+
+// assumption: only call this method with a valid row and column that is within the bounds of the board and does not contain a piece
+- (void)getDestinationForDirection:(Direction)direction withGamePiece:(GamePiece*)gamePiece andStartingRow:(NSInteger)startingRow andStartingColumn:(NSInteger)startingColumn {
+    GridPosition *position = [[GridPosition alloc] init];
+
     switch (direction) {
         case Down:
             position.row = 0;
             position.column = startingColumn;
             position.direction = Down;
             
-            for (int row = startingRow; row >= 0;row--) {
-                if (boardTokens[row][startingColumn] == Sticky) {
-                    if (gameBoard[row][startingColumn] != nil) {
+            for (NSInteger row = startingRow; row >= 0;row--) {
+                if ([[self tokenAtPosition:FPositionMake(row, startingColumn)] integerValue] == Sticky) {
+                    if ([self gamePieceAtPosition:FPositionMake(row, startingColumn)].player != Empty) {
+                    //if (gameBoard[row][startingColumn] != nil) {
                         // If the piece in the sticky square can move
-                        if (row - 1 >= 0 && gameBoard[row-1][startingColumn] == nil){
-                            GamePiece *stuckPiece = gameBoard[row][startingColumn];
+                        if (row - 1 >= 0 && [self gamePieceAtPosition:FPositionMake(row - 1, startingColumn)].player == Empty){
+                        //if (row - 1 >= 0 && gameBoard[row-1][startingColumn] == nil){
+                            GamePiece *stuckPiece = [self gamePieceAtPosition:FPositionMake(row, startingColumn)];
+                            //GamePiece *stuckPiece = gameBoard[row][startingColumn];
                             [stuckPiece resetMovement];
                             [self getDestinationForDirection:Down withGamePiece:stuckPiece andStartingRow:row - 1 andStartingColumn:startingColumn];
                             [self.currentPieces addObject:stuckPiece];
@@ -700,26 +733,26 @@ int boardTokens[8][8];
                         position.row = row;
                         break;
                     }
-                } else if (gameBoard[row][startingColumn] != nil) {
+                } else if ([self gamePieceAtPosition:FPositionMake(row, startingColumn)].player != Empty) {
                     position.row = row + 1;
                     break;
-                } else if (boardTokens[row][startingColumn] == UpArrow) {
+                } else if ([[self tokenAtPosition:FPositionMake(row, startingColumn)] integerValue] == UpArrow) {
                     position.row = row;
                     [self getDestinationForDirection:Up withGamePiece:gamePiece andStartingRow:row + 1 andStartingColumn:startingColumn];
                     break;
-                } else if (boardTokens[row][startingColumn] == DownArrow) {
+                } else if ([[self tokenAtPosition:FPositionMake(row, startingColumn)] integerValue] == DownArrow) {
                     position.row = row;
                     [self getDestinationForDirection:Down withGamePiece:gamePiece andStartingRow:row - 1 andStartingColumn:startingColumn];
                     break;
-                } else if (boardTokens[row][startingColumn] == LeftArrow) {
+                } else if ([[self tokenAtPosition:FPositionMake(row, startingColumn)] integerValue] == LeftArrow) {
                     position.row = row;
                     [self getDestinationForDirection:Left withGamePiece:gamePiece andStartingRow:row andStartingColumn:startingColumn - 1];
                     break;
-                } else if (boardTokens[row][startingColumn] == RightArrow) {
+                } else if ([[self tokenAtPosition:FPositionMake(row, startingColumn)] integerValue] == RightArrow) {
                     position.row = row;
                     [self getDestinationForDirection:Right withGamePiece:gamePiece andStartingRow:row andStartingColumn:startingColumn + 1];
                     break;
-                } else if (boardTokens[row][startingColumn] == Blocker) {
+                } else if ([[self tokenAtPosition:FPositionMake(row, startingColumn)] integerValue] == Blocker) {
                     position.row = row + 1;
                     break;
                 }
@@ -734,11 +767,11 @@ int boardTokens[8][8];
             position.direction = Up;
             
             for (int row = startingRow; row <= self.boardRows-1;row++) {
-                if (boardTokens[row][startingColumn] == Sticky) {
-                    if (gameBoard[row][startingColumn] != nil) {
+                if ([[self tokenAtPosition:FPositionMake(row, startingColumn)] integerValue] == Sticky) {
+                    if ([self gamePieceAtPosition:FPositionMake(row, startingColumn)].player != Empty) {
                         // If the piece in the sticky square can move
-                        if (row + 1 < kBoardRows && gameBoard[row+1][startingColumn] == nil){
-                            GamePiece *stuckPiece = gameBoard[row][startingColumn];
+                        if (row + 1 < kBoardRows && [self gamePieceAtPosition:FPositionMake(row + 1, startingColumn)].player == Empty){
+                            GamePiece *stuckPiece = [self gamePieceAtPosition:FPositionMake(row, startingColumn)];
                             [stuckPiece resetMovement];
                             [self getDestinationForDirection:Up withGamePiece:stuckPiece andStartingRow:row + 1 andStartingColumn:startingColumn];
                             [self.currentPieces addObject:stuckPiece];
@@ -754,26 +787,26 @@ int boardTokens[8][8];
                         position.row = row;
                         break;
                     }
-                } else if (gameBoard[row][startingColumn] != nil) {
+                } else if ([self gamePieceAtPosition:FPositionMake(row, startingColumn)].player != Empty) {
                     position.row = row - 1;
                     break;
-                } else if (boardTokens[row][startingColumn] == UpArrow) {
+                } else if ([[self tokenAtPosition:FPositionMake(row, startingColumn)] integerValue] == UpArrow) {
                     position.row = row;
                     [self getDestinationForDirection:Up withGamePiece:gamePiece andStartingRow:row + 1 andStartingColumn:startingColumn];
                     break;
-                } else if (boardTokens[row][startingColumn] == DownArrow) {
+                } else if ([[self tokenAtPosition:FPositionMake(row, startingColumn)] integerValue] == DownArrow) {
                     position.row = row;
                     [self getDestinationForDirection:Down withGamePiece:gamePiece andStartingRow:row - 1 andStartingColumn:startingColumn];
                     break;
-                } else if (boardTokens[row][startingColumn] == LeftArrow) {
+                } else if ([[self tokenAtPosition:FPositionMake(row, startingColumn)] integerValue] == LeftArrow) {
                     position.row = row;
                     [self getDestinationForDirection:Left withGamePiece:gamePiece andStartingRow:row andStartingColumn:startingColumn - 1];
                     break;
-                } else if (boardTokens[row][startingColumn] == RightArrow) {
+                } else if ([[self tokenAtPosition:FPositionMake(row, startingColumn)] integerValue] == RightArrow) {
                     position.row = row;
                     [self getDestinationForDirection:Right withGamePiece:gamePiece andStartingRow:row andStartingColumn:startingColumn + 1];
                     break;
-                } else if (boardTokens[row][startingColumn] == Blocker) {
+                } else if ([[self tokenAtPosition:FPositionMake(row, startingColumn)] integerValue] == Blocker) {
                     position.row = row - 1;
                     break;
                 }
@@ -788,11 +821,11 @@ int boardTokens[8][8];
             position.direction = Left;
             
             for (int column = startingColumn; column >= 0;column--) {
-                if (boardTokens[startingRow][column] == Sticky) {
-                    if (gameBoard[startingRow][column] != nil) {
+                if ([[self tokenAtPosition:FPositionMake(startingRow, column)] integerValue] == Sticky) {
+                    if ([self gamePieceAtPosition:FPositionMake(startingRow, column)].player != Empty) {
                         // If the piece in the sticky square can move
-                        if (column - 1 >= 0 && gameBoard[startingRow][column-1] == nil){
-                            GamePiece *stuckPiece = gameBoard[startingRow][column];
+                        if (column - 1 >= 0 && [self gamePieceAtPosition:FPositionMake(startingRow, column - 1)].player == Empty){
+                            GamePiece *stuckPiece = [self gamePieceAtPosition:FPositionMake(startingRow, column)];
                             [stuckPiece resetMovement];
                             [self getDestinationForDirection:Left withGamePiece:stuckPiece andStartingRow:startingRow andStartingColumn:column - 1];
                             [self.currentPieces addObject:stuckPiece];
@@ -808,26 +841,26 @@ int boardTokens[8][8];
                         position.column = column;
                         break;
                     }
-                } else if (gameBoard[startingRow][column] != nil) {
+                } else if ([self gamePieceAtPosition:FPositionMake(startingRow, column)].player != Empty) {
                     position.column = column + 1;
                     break;
-                } else if (boardTokens[startingRow][column] == UpArrow) {
+                } else if ([[self tokenAtPosition:FPositionMake(startingRow, column)] integerValue] == UpArrow) {
                     position.column = column;
                     [self getDestinationForDirection:Up withGamePiece:gamePiece andStartingRow:startingRow + 1 andStartingColumn:column];
                     break;
-                } else if (boardTokens[startingRow][column] == DownArrow) {
+                } else if ([[self tokenAtPosition:FPositionMake(startingRow, column)] integerValue] == DownArrow) {
                     position.column = column;
                     [self getDestinationForDirection:Down withGamePiece:gamePiece andStartingRow:startingRow - 1 andStartingColumn:column];
                     break;
-                } else if (boardTokens[startingRow][column] == LeftArrow) {
+                } else if ([[self tokenAtPosition:FPositionMake(startingRow, column)] integerValue] == LeftArrow) {
                     position.column = column;
                     [self getDestinationForDirection:Left withGamePiece:gamePiece andStartingRow:startingRow andStartingColumn:column - 1];
                     break;
-                } else if (boardTokens[startingRow][column] == RightArrow) {
+                } else if ([[self tokenAtPosition:FPositionMake(startingRow, column)] integerValue] == RightArrow) {
                     position.column = column;
                     [self getDestinationForDirection:Right withGamePiece:gamePiece andStartingRow:startingRow andStartingColumn:column + 1];
                     break;
-                } else if (boardTokens[startingRow][column] == Blocker) {
+                } else if ([[self tokenAtPosition:FPositionMake(startingRow, column)] integerValue] == Blocker) {
                     position.column = column + 1;
                     break;
                 }
@@ -842,11 +875,11 @@ int boardTokens[8][8];
             position.direction = Right;
             
             for (int column = startingColumn; column <= self.boardColumns-1;column++) {
-                if (boardTokens[startingRow][column] == Sticky) {
-                    if (gameBoard[startingRow][column] != nil) {
+                if ([[self tokenAtPosition:FPositionMake(startingRow, column)] integerValue] == Sticky) {
+                    if ([self gamePieceAtPosition:FPositionMake(startingRow, column)].player != Empty) {
                         // If the piece in the sticky square can move
-                        if (column + 1 < kBoardColumns && gameBoard[startingRow][column+1] == nil){
-                            GamePiece *stuckPiece = gameBoard[startingRow][column];
+                        if (column + 1 < kBoardColumns && [self gamePieceAtPosition:FPositionMake(startingRow, column + 1)].player == Empty){
+                            GamePiece *stuckPiece = [self gamePieceAtPosition:FPositionMake(startingRow, column)];
                             [stuckPiece resetMovement];
                             [self getDestinationForDirection:Right withGamePiece:stuckPiece andStartingRow:startingRow andStartingColumn:column + 1];
                             [self.currentPieces addObject:stuckPiece];
@@ -862,26 +895,26 @@ int boardTokens[8][8];
                         position.column = column;
                         break;
                     }
-                } else if (gameBoard[startingRow][column] != nil) {
+                } else if ([self gamePieceAtPosition:FPositionMake(startingRow, column)].player != Empty) {
                     position.column = column - 1;
                     break;
-                } else if (boardTokens[startingRow][column] == UpArrow) {
+                } else if ([[self tokenAtPosition:FPositionMake(startingRow, column)] integerValue] == UpArrow) {
                     position.column = column;
                     [self getDestinationForDirection:Up withGamePiece:gamePiece andStartingRow:startingRow + 1 andStartingColumn:column];
                     break;
-                } else if (boardTokens[startingRow][column] == DownArrow) {
+                } else if ([[self tokenAtPosition:FPositionMake(startingRow, column)] integerValue] == DownArrow) {
                     position.column = column;
                     [self getDestinationForDirection:Down withGamePiece:gamePiece andStartingRow:startingRow - 1 andStartingColumn:column];
                     break;
-                } else if (boardTokens[startingRow][column] == LeftArrow) {
+                } else if ([[self tokenAtPosition:FPositionMake(startingRow, column)] integerValue] == LeftArrow) {
                     position.column = column;
                     [self getDestinationForDirection:Left withGamePiece:gamePiece andStartingRow:startingRow andStartingColumn:column - 1];
                     break;
-                } else if (boardTokens[startingRow][column] == RightArrow) {
+                } else if ([[self tokenAtPosition:FPositionMake(startingRow, column)] integerValue] == RightArrow) {
                     position.column = column;
                     [self getDestinationForDirection:Right withGamePiece:gamePiece andStartingRow:startingRow andStartingColumn:column + 1];
                     break;
-                } else if (boardTokens[startingRow][column] == Blocker) {
+                } else if ([[self tokenAtPosition:FPositionMake(startingRow, column)] integerValue] == Blocker) {
                     position.column = column - 1;
                     break;
                 }
@@ -940,8 +973,8 @@ int boardTokens[8][8];
 }
 
 -(int)updateWinCounterWithRow:(int)row andColumn:(int)column andPlayer:(PieceType)player andWinCounter:(int)winCounter {
-    if (gameBoard[row][column] != nil) {
-        if (gameBoard[row][column].player == player) {
+    if ([self gamePieceAtPosition:FPositionMake(row, column)].player != Empty) {
+        if ([self gamePieceAtPosition:FPositionMake(row, column)].player == player) {
             winCounter++;
         } else {
             winCounter = 0;
@@ -958,11 +991,11 @@ int boardTokens[8][8];
     int winCounter = 0;
     
     for (int column = 0; column < self.boardRows; column++) {
-        if (column > 0 && gameBoard[row][column].player != gameBoard[row][column-1].player) {
+        if (column > 0 && [self gamePieceAtPosition:FPositionMake(row, column)].player != [self gamePieceAtPosition:FPositionMake(row, column - 1)].player) {
             winCounter = 0;
             [self.winningPositions removeAllObjects];
         }
-        currentPiece = gameBoard[row][column].player;
+        currentPiece = [self gamePieceAtPosition:FPositionMake(row, column)].player;
         winCounter = [self updateWinCounterWithRow:row andColumn:column andPlayer:currentPiece andWinCounter:winCounter];
         
         if (winCounter > 0) {
@@ -985,11 +1018,11 @@ int boardTokens[8][8];
     int winCounter = 0;
     
     for (int row = 0; row < self.boardRows; row++) {
-        if (row > 0 && gameBoard[row][column].player != gameBoard[row-1][column].player) {
+        if (row > 0 && [self gamePieceAtPosition:FPositionMake(row, column)].player != [self gamePieceAtPosition:FPositionMake(row - 1, column)].player) {
             winCounter = 0;
             [self.winningPositions removeAllObjects];
         }
-        currentPiece = gameBoard[row][column].player;
+        currentPiece = [self gamePieceAtPosition:FPositionMake(row, column)].player;
         winCounter = [self updateWinCounterWithRow:row andColumn:column andPlayer:currentPiece andWinCounter:winCounter];
         
         if (winCounter > 0) {
@@ -1020,11 +1053,11 @@ int boardTokens[8][8];
     }
     
     for (row = startingRow, column = startingColumn; row < self.boardRows && column < self.boardColumns; row++,column++) {
-        if (row > startingRow && column > startingColumn && gameBoard[row][column].player != gameBoard[row-1][column-1].player) {
+        if (row > startingRow && column > startingColumn && [self gamePieceAtPosition:FPositionMake(row, column)].player != [self gamePieceAtPosition:FPositionMake(row - 1, column - 1)].player) {
             winCounter = 0;
             [self.winningPositions removeAllObjects];
         }
-        currentPiece = gameBoard[row][column].player;
+        currentPiece = [self gamePieceAtPosition:FPositionMake(row, column)].player;
         winCounter = [self updateWinCounterWithRow:row andColumn:column andPlayer:currentPiece andWinCounter:winCounter];
         
         if (winCounter > 0) {
@@ -1047,11 +1080,11 @@ int boardTokens[8][8];
     }
     
     for (row = startingRow, column = startingColumn; row >= 0 && column < self.boardColumns;row--,column++) {
-        if (row < startingRow && column > startingColumn && gameBoard[row][column].player != gameBoard[row+1][column-1].player) {
+        if (row < startingRow && column > startingColumn && [self gamePieceAtPosition:FPositionMake(row, column)].player != [self gamePieceAtPosition:FPositionMake(row + 1, column - 1)].player) {
             winCounter = 0;
             [self.winningPositions removeAllObjects];
         }
-        currentPiece = gameBoard[row][column].player;
+        currentPiece = [self gamePieceAtPosition:FPositionMake(row, column)].player;
         winCounter = [self updateWinCounterWithRow:row andColumn:column andPlayer:currentPiece andWinCounter:winCounter];
         
         if (winCounter > 0) {
@@ -1089,12 +1122,25 @@ int boardTokens[8][8];
     
     self.gameData = [[GameKitMatchData alloc] initWithData:match.matchData];
     
-
     if (self.gameData.tokenLayout) {
-        [self layoutBoardTokens];
+        [self initTokensWithDimention:self.boardRows];
     }
     if (self.gameData.moves) {
-        
+        self.currentPlayer = Player1;
+        for (int i = 0;i < self.gameData.moves.count / 3; i = i + 3) {
+            Direction direction = (Direction)[(NSNumber*)self.gameData.moves[i * 3 + 2] intValue];
+            NSNumber *row = self.gameData.moves[i * 3];
+            NSNumber *col = self.gameData.moves[i * 3 + 1];
+            
+            [self makeMoveFromRow:[row integerValue] andColumn:[col integerValue] andDirection:direction
+                     andPieceType:self.currentPlayer];
+            if (self.currentPlayer == Player1) {
+                self.currentPlayer = Player2;
+            } else {
+                self.currentPlayer = Player1;
+            }
+        }
+        [self renderGameBoard];
     }
     
     if (match.status == GKTurnBasedMatchStatusEnded)

@@ -8,21 +8,21 @@
 
 #import <Foundation/Foundation.h>
 
-typedef enum {
+typedef NS_ENUM(NSUInteger, PieceType) {
 	Empty,
 	Player1,
 	Player2,
     Tie
-} PieceType;
+};
 
-typedef enum {
+typedef NS_ENUM(NSUInteger, Direction) {
     Up,
     Down,
     Left,
     Right
-} Direction;
+};
 
-typedef enum {
+typedef NS_ENUM(NSUInteger, TokenType) {
     None,
     Sticky,
     UpArrow,
@@ -30,7 +30,7 @@ typedef enum {
     LeftArrow,
     RightArrow,
     Blocker
-} TokenType;
+};
 
 #pragma mark - Custom Type Definitions
 

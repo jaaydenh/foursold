@@ -106,6 +106,7 @@ UIScrollView *scrollView;
                     gameScene.scaleMode = SKSceneScaleModeAspectFill;
                     [self.kkView pushScene:gameScene transition:reveal];
                     [gameScene layoutMatch:matchNode.match];
+                    [gameScene setCurrentMatch:matchNode.match];
                 }
             }
         }
